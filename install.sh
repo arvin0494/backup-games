@@ -96,7 +96,7 @@ create_config() {
         cat > "$cfg_file" << 'EOF'
 # backup-games configuration
 sources=~/Games
-dirsources=~/.local/share/honkers-railway-launcher
+dirsources=~/.local/share/honkers-railway-launcher,~/.local/share/honkers
 dest=/mnt/HDD4T/GAMES
 min_size=1
 EOF
