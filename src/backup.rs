@@ -6,7 +6,7 @@ use anyhow::Result;
 
 pub static INTERRUPTED: AtomicBool = AtomicBool::new(false);
 
-pub fn run_backup(source: &str, dest: &str, full: bool) -> Result<()> {
+pub fn run_backup(source: &str, dest: &str, full: bool, keep_dir: bool) -> Result<()> {
     e(&format!("Starting backup: {} → {}", source, dest));
 
     let src_expanded = util::expand_tilde(source);
@@ -31,6 +31,27 @@ pub fn run_backup(source: &str, dest: &str, full: bool) -> Result<()> {
     } else {
         util::load_manifest(&manifest_path)
     };
+
+    if keep_dir {
+        let dir_name = std::path::Path::new(&src_expanded)
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| "backup".to_string());
+        let full_dst = format!("{}/{}", dest_expanded, dir_name);
+        let mtime = util::dir_mtime(&src_expanded).unwrap_or(0);
+
+        if !full && manifest.get(&dir_name) == Some(&mtime) {
+            e(&format!("  {}{}{} unchanged", util::CYAN, dir_name, util::RESET));
+            return Ok(());
+        }
+
+        e(&format!("  {}{}{} → ...", util::BOLD, dir_name, util::RESET));
+        util::copy_progress(&src_expanded, &full_dst, checkers, false, false)?;
+        manifest.insert(dir_name, mtime);
+        util::save_manifest(&manifest_path, &manifest)?;
+        e("Done: 1 backed up");
+        return Ok(());
+    }
 
     let subdirs = util::list_subdirs(&src_expanded)?;
     if subdirs.is_empty() {

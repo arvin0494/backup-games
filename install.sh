@@ -56,7 +56,8 @@ create_config() {
         mkdir -p "$cfg_dir"
         cat > "$cfg_file" << 'EOF'
 # backup-games configuration
-sources=~/Games,~/.local/share/honkers-railway-launcher
+sources=~/Games
+dirsources=~/.local/share/honkers-railway-launcher
 dest=/mnt/HDD4T/GAMES
 EOF
         echo "Created default config at $cfg_file"

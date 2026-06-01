@@ -46,6 +46,7 @@ fn main() {
     let user_cfg = config::load_user_config();
 
     let sources = config::load_sources(&user_cfg, cli.source.clone());
+    let dir_sources = config::load_dir_sources(&user_cfg);
 
     let dest = cli
         .dest
@@ -70,7 +71,10 @@ fn main() {
             restore::run_restore(&sources, &dest)
         } else {
             for source in &sources {
-                backup::run_backup(source, &dest, cli.full)?;
+                backup::run_backup(source, &dest, cli.full, false)?;
+            }
+            for source in &dir_sources {
+                backup::run_backup(source, &dest, cli.full, true)?;
             }
             Ok(())
         }

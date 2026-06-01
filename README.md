@@ -35,12 +35,15 @@ backup-games --version          # show version (git describe)
 
 `~/.config/backup-games/config`:
 ```
-sources=~/Games,~/.local/share/honkers-railway-launcher
+sources=~/Games
+dirsources=~/.local/share/honkers-railway-launcher
 dest=/mnt/HDD4T/GAMES
 ```
 
-Use `sources` (comma-separated) for multiple sources, or `source` for a single one.
-CLI flag `--source`/`-s` overrides all config sources. Lines starting with `#` are ignored.
+- `sources` — subdirectories are flattened into the destination root
+- `dirsources` — each source is copied as a whole directory keeping its own name
+- `source` — backward compat, single flat source
+- CLI flag `--source`/`-s` overrides all config sources
 
 ## Dependencies
 
