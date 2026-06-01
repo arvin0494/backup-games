@@ -2,14 +2,13 @@
 set -euo pipefail
 
 PROJECT="backup-games"
-REPO_URL=""
+REPO_URL="https://github.com/arvin0494/backup-games.git"
 
 ensure_rust() {
     if command -v cargo &>/dev/null; then
         return 0
     fi
     if [ -f "$HOME/.cargo/env" ]; then
-        # shellcheck source=/dev/null
         source "$HOME/.cargo/env"
         if command -v cargo &>/dev/null; then
             return 0
@@ -24,32 +23,25 @@ ensure_rust() {
 }
 
 clone_repo() {
-    if [ -d "$PROJECT" ]; then
-        echo "Project directory exists, pulling updates..."
-        cd "$PROJECT"
-        git pull
-        cd ..
-    else
-        git clone --depth 1 "$REPO_URL" "$PROJECT" || \
-        git clone --depth 1 "${REPO_URL/https:\/\/github.com\//git@github.com:}" "$PROJECT"
-    fi
+    git clone --depth 1 "$REPO_URL" "$PROJECT" || \
+    git clone --depth 1 "${REPO_URL/https:\/\/github.com\//git@github.com:}" "$PROJECT"
 }
 
 build_binary() {
-    cd "$PROJECT"
     cargo build --release
     mkdir -p "$HOME/.local/bin"
     cp "target/release/$PROJECT" "$HOME/.local/bin/"
     echo "Installed to ~/.local/bin/$PROJECT"
-    cd ..
 }
 
 shell_aliases() {
-    local alias_cmd="alias $PROJECT='$HOME/.local/bin/$PROJECT'"
+    local bin="$HOME/.local/bin/$PROJECT"
+    local alias1="alias $PROJECT='$bin'"
+    local alias2="alias bckup-games='$bin'"
     for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.config/fish/config.fish"; do
-        if [ -f "$rc" ] && ! grep -q "alias $PROJECT" "$rc" 2>/dev/null; then
-            echo "$alias_cmd" >> "$rc"
-            echo "Added alias to $rc"
+        if [ -f "$rc" ]; then
+            ! grep -q "alias $PROJECT=" "$rc" 2>/dev/null && echo "$alias1" >> "$rc" && echo "Added alias $PROJECT to $rc"
+            ! grep -q "alias bckup-games=" "$rc" 2>/dev/null && echo "$alias2" >> "$rc" && echo "Added alias bckup-games to $rc"
         fi
     done
 }
@@ -61,8 +53,8 @@ create_config() {
         mkdir -p "$cfg_dir"
         cat > "$cfg_file" << 'EOF'
 # backup-games configuration
-# source=~/Games
-# dest=/mnt/HDD4T/GAMES
+source=~/Games
+dest=/mnt/HDD4T/GAMES
 EOF
         echo "Created default config at $cfg_file"
     fi
@@ -70,7 +62,15 @@ EOF
 
 main() {
     ensure_rust
-    [ -n "$REPO_URL" ] && clone_repo
+
+    if [ -f "Cargo.toml" ]; then
+        BUILD_DIR="$PWD"
+    else
+        clone_repo
+        BUILD_DIR="$PWD/$PROJECT"
+    fi
+
+    cd "$BUILD_DIR"
     build_binary
     shell_aliases
     create_config

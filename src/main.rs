@@ -18,6 +18,9 @@ struct Cli {
     #[arg(short = 'y', long = "yes")]
     yes: bool,
 
+    #[arg(short = 's', long = "source")]
+    source: Option<String>,
+
     dest: Option<String>,
 }
 
@@ -28,9 +31,10 @@ fn main() {
 
     let user_cfg = config::load_user_config();
 
-    let source = user_cfg
-        .get("source")
-        .cloned()
+    let source = cli
+        .source
+        .clone()
+        .or_else(|| user_cfg.get("source").cloned())
         .unwrap_or_else(|| config::DEFAULT_SOURCE.to_string());
 
     let dest = cli
