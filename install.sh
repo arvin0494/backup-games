@@ -59,7 +59,7 @@ create_config() {
 sources=~/Games
 dirsources=~/.local/share/honkers-railway-launcher
 dest=/mnt/HDD4T/GAMES
-min_size=50
+min_size=1
 EOF
         echo "Created default config at $cfg_file"
     fi
