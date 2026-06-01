@@ -107,6 +107,10 @@ EOF
 cleanup() { [ -n "${_TMPDIR:-}" ] && rm -rf "$_TMPDIR"; }
 
 main() {
+    if [ "${1:-}" = "--uninstall" ]; then
+        exec "$(dirname "$0")/uninstall.sh"
+    fi
+
     header
 
     printf "${D}  ╔══════════════════════════════════════════════════════╗${N}\n"
