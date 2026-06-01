@@ -1,7 +1,10 @@
+use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
+use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
+use std::time::SystemTime;
 use anyhow::{Context, Result, bail};
 
 pub const RED: &str = "\x1b[31m";
@@ -157,6 +160,58 @@ pub fn copy_progress(src: &str, dst: &str, checkers: u32, _ntfs: bool, skip_link
         bail!("rclone copy failed");
     }
     Ok(())
+}
+
+pub fn dir_mtime(path: &str) -> Option<u64> {
+    fs::metadata(path)
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+}
+
+pub fn load_manifest(path: &str) -> HashMap<String, u64> {
+    let mut map = HashMap::new();
+    let content = fs::read_to_string(path).unwrap_or_default();
+    for line in content.lines() {
+        if let Some((k, v)) = line.split_once('=') {
+            if let Ok(ts) = v.trim().parse::<u64>() {
+                map.insert(k.trim().to_string(), ts);
+            }
+        }
+    }
+    map
+}
+
+pub fn save_manifest(path: &str, map: &HashMap<String, u64>) -> Result<()> {
+    if let Some(parent) = Path::new(path).parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let mut s = String::new();
+    let mut pairs: Vec<_> = map.iter().collect();
+    pairs.sort_by_key(|p| p.0.clone());
+    for (k, v) in pairs {
+        s.push_str(&format!("{}={}\n", k, v));
+    }
+    fs::write(path, s)?;
+    Ok(())
+}
+
+pub fn list_subdirs(path: &str) -> Result<Vec<(String, String, u64)>> {
+    let mut dirs = Vec::new();
+    for entry in fs::read_dir(path)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                let full = path.to_string_lossy().to_string();
+                let mtime = dir_mtime(&full).unwrap_or(0);
+                dirs.push((name.to_string(), full, mtime));
+            }
+        }
+    }
+    dirs.sort_by(|a, b| a.0.cmp(&b.0));
+    Ok(dirs)
 }
 
 pub fn install_deps() -> Result<()> {

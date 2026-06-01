@@ -15,6 +15,9 @@ struct Cli {
     #[arg(short = 'r', long = "restore")]
     restore: bool,
 
+    #[arg(long = "full")]
+    full: bool,
+
     #[arg(short = 'y', long = "yes")]
     yes: bool,
 
@@ -59,7 +62,7 @@ fn main() {
         if cli.restore {
             restore::run_restore(&source, &dest)
         } else {
-            backup::run_backup(&source, &dest, cli.yes)
+            backup::run_backup(&source, &dest, cli.full)
         }
     });
 

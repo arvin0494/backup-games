@@ -6,6 +6,7 @@ pub const DEFAULT_SOURCE: &str = "~/Games";
 pub const DEFAULT_DEST: &str = "/mnt/HDD4T/GAMES";
 pub const LOG_FILE: &str = "/tmp/backup-games.log";
 pub const CONFIG_DIR: &str = "backup-games";
+pub const MANIFEST_FILE: &str = "~/.local/share/backup-games/manifest";
 
 pub fn load_user_config() -> HashMap<String, String> {
     let config_path = dirs::config_dir()

@@ -25,7 +25,8 @@ bckup-games                     # same via alias (added by install.sh)
 backup-games -s ~/OtherGames    # backup custom source
 backup-games /custom/dest       # backup to custom destination
 backup-games -r                 # restore with fzf multi-select
-backup-games -y                 # skip confirmation
+backup-games -y                 # skip confirmation (unused currently)
+backup-games --full             # force full backup, ignore change tracking
 ```
 
 ## Config
@@ -50,7 +51,8 @@ Installed automatically on supported package managers (`apt`, `pacman`, `dnf`, `
 
 1. Estimates directory size in a parallel thread
 2. Detects destination disk type (HDD=3 checkers, SSD=8, NVMe=16) for optimal rclone parallelism
-3. Runs `rclone copy` with `--progress` and inherited stderr
-4. Logs all messages to `/tmp/backup-games.log`
+3. **Change tracking** — each game directory's modification time is stored in `~/.local/share/backup-games/manifest`. Unchanged directories are skipped entirely, saving the scan overhead.
+4. Runs `rclone copy` only on changed directories with `--progress` and inherited stderr
+5. Logs all messages to `/tmp/backup-games.log`
 
 Restore scans the backup, pipes items into `fzf --multi`, and copies selected items back.
