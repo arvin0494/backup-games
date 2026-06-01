@@ -97,25 +97,27 @@ fn main() {
 
 fn check_update() {
     let latest = util::run(
-        "curl -sSL https://api.github.com/repos/arvin0494/backup-games/tags 2>/dev/null | \
-         grep -o '\"name\":\"[^\"]*\"' | head -1 | cut -d'\"' -f4",
+        "curl -sL 'https://api.github.com/repos/arvin0494/backup-games/tags?per_page=1' | \
+         jq -r '.[0].name // empty'",
     );
 
     match latest {
-        Ok(tag) => {
-            let local = VERSION.trim_start_matches('v');
-            let remote = tag.trim_start_matches('v');
-            if remote == local {
-                util::e(&format!("{}{} up to date ({}){}", util::GREEN, VERSION, tag, util::RESET));
+        Ok(tag) if !tag.is_empty() => {
+            let on_tag = VERSION == tag || VERSION.starts_with(&format!("{}-", tag));
+            if on_tag {
+                util::e(&format!(
+                    "{}{} up to date ({}){}",
+                    util::GREEN, VERSION, tag, util::RESET
+                ));
             } else {
                 util::e(&format!(
-                    "{}Update available: {} → {} {}{}",
-                    util::BOLD, VERSION, tag, util::YELLOW, util::RESET
+                    "{}Update available: {} → {}{}",
+                    util::BOLD, VERSION, tag, util::RESET
                 ));
                 util::e("Run: curl -sSL https://github.com/arvin0494/backup-games/raw/main/install.sh | bash");
             }
         }
-        Err(_) => {
+        _ => {
             util::e(&format!("{}Could not check for updates (no network?){}", util::RED, util::RESET));
         }
     }

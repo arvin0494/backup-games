@@ -27,6 +27,8 @@ backup-games /custom/dest       # backup to custom destination
 backup-games -r                 # restore with fzf multi-select
 backup-games -y                 # skip confirmation (unused currently)
 backup-games --full             # force full backup, ignore change tracking
+backup-games --check-update     # check GitHub for newer version
+backup-games --version          # show version (git describe)
 ```
 
 ## Config
