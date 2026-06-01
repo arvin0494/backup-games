@@ -60,7 +60,30 @@ fn main() {
         return;
     }
 
-    check_update();
+    let last_check_path = util::expand_tilde("~/.local/share/backup-games/last-update-check");
+    let should_check = std::fs::read_to_string(&last_check_path)
+        .ok()
+        .and_then(|s| s.trim().parse::<u64>().ok())
+        .map(|ts| {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            now - ts > 86400
+        })
+        .unwrap_or(true);
+
+    if should_check {
+        check_update();
+        if let Some(parent) = std::path::Path::new(&last_check_path).parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let _ = std::fs::write(&last_check_path, now.to_string());
+    }
 
     if let Err(e) = util::install_deps() {
         util::e(&format!("{}Failed to install deps: {}{}", util::RED, e, util::RESET));
