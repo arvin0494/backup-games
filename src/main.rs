@@ -103,24 +103,39 @@ fn check_update() {
          jq -r '.[0].name // empty'",
     );
 
-    match latest {
-        Ok(tag) if !tag.is_empty() => {
-            let on_tag = VERSION == tag || VERSION.starts_with(&format!("{}-", tag));
-            if on_tag {
-                util::e(&format!(
-                    "{}{} up to date ({}){}",
-                    util::GREEN, VERSION, tag, util::RESET
-                ));
-            } else {
-                util::e(&format!(
-                    "{}Update available: {} → {}{}",
-                    util::BOLD, VERSION, tag, util::RESET
-                ));
-                util::e("Run: curl -sSL https://github.com/arvin0494/backup-games/raw/main/install.sh | bash");
-            }
-        }
+    let tag = match latest {
+        Ok(t) if !t.is_empty() => t,
         _ => {
-            util::e(&format!("{}Could not check for updates (no network or missing jq?){}", util::RED, util::RESET));
+            util::e(&format!("{}Could not check for updates{}", util::RED, util::RESET));
+            return;
         }
+    };
+
+    let on_tag = VERSION == tag || VERSION.starts_with(&format!("{}-", tag));
+    if on_tag {
+        util::e(&format!("{}{} up to date{}", util::GREEN, VERSION, util::RESET));
+        return;
+    }
+
+    util::e(&format!("{}Update available: {} → {}{}", util::BOLD, VERSION, tag, util::RESET));
+    print!("{}Install now? [Y/n]{} ", util::YELLOW, util::RESET);
+    let _ = std::io::Write::flush(&mut std::io::stdout());
+
+    let mut input = String::new();
+    let proceed = match std::io::stdin().read_line(&mut input) {
+        Ok(_) => input.trim().is_empty() || input.trim().eq_ignore_ascii_case("y"),
+        Err(_) => true,
+    };
+
+    if proceed {
+        util::e("Installing update...");
+        if let Err(e) = util::run_ok(
+            "curl -sSL https://github.com/arvin0494/backup-games/raw/main/install.sh | bash",
+        ) {
+            util::e(&format!("{}Update failed: {}{}", util::RED, e, util::RESET));
+        } else {
+            util::e(&format!("{}Update complete, re-run the command{}", util::GREEN, util::RESET));
+        }
+        std::process::exit(0);
     }
 }
