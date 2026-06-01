@@ -45,11 +45,7 @@ fn main() {
 
     let user_cfg = config::load_user_config();
 
-    let source = cli
-        .source
-        .clone()
-        .or_else(|| user_cfg.get("source").cloned())
-        .unwrap_or_else(|| config::DEFAULT_SOURCE.to_string());
+    let sources = config::load_sources(&user_cfg, cli.source.clone());
 
     let dest = cli
         .dest
@@ -69,18 +65,14 @@ fn main() {
         std::process::exit(1);
     }
 
-    let op = if cli.restore {
-        "restore" as &str
-    } else {
-        "backup" as &str
-    };
-    util::e(&format!("Mode: {op}, source: {source}, dest: {dest}"));
-
     let result = panic::catch_unwind(|| {
         if cli.restore {
-            restore::run_restore(&source, &dest)
+            restore::run_restore(&sources, &dest)
         } else {
-            backup::run_backup(&source, &dest, cli.full)
+            for source in &sources {
+                backup::run_backup(source, &dest, cli.full)?;
+            }
+            Ok(())
         }
     });
 

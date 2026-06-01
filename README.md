@@ -35,11 +35,12 @@ backup-games --version          # show version (git describe)
 
 `~/.config/backup-games/config`:
 ```
-source=~/Games
+sources=~/Games,~/.local/share/honkers-railway-launcher
 dest=/mnt/HDD4T/GAMES
 ```
 
-CLI flags `--source`/`-s` and positional `dest` override the config. Lines starting with `#` are ignored.
+Use `sources` (comma-separated) for multiple sources, or `source` for a single one.
+CLI flag `--source`/`-s` overrides all config sources. Lines starting with `#` are ignored.
 
 ## Dependencies
 

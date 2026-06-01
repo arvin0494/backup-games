@@ -33,3 +33,22 @@ pub fn load_user_config() -> HashMap<String, String> {
     }
     map
 }
+
+pub fn load_sources(user_cfg: &HashMap<String, String>, cli_source: Option<String>) -> Vec<String> {
+    if let Some(s) = cli_source {
+        return vec![s];
+    }
+    if let Some(s) = user_cfg.get("sources") {
+        let list: Vec<String> = s.split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        if !list.is_empty() {
+            return list;
+        }
+    }
+    if let Some(s) = user_cfg.get("source") {
+        return vec![s.clone()];
+    }
+    vec![DEFAULT_SOURCE.to_string()]
+}
