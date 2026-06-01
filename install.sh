@@ -3,6 +3,7 @@ set -euo pipefail
 
 PROJECT="backup-games"
 REPO_URL="https://github.com/arvin0494/backup-games.git"
+_TMPDIR=""
 
 ensure_rust() {
     if command -v cargo &>/dev/null; then
@@ -22,24 +23,12 @@ ensure_rust() {
     return 1
 }
 
-clone_repo() {
-    if [ -d "$PROJECT/.git" ]; then
-        cd "$PROJECT"
-        git pull
-        cd ..
-    elif [ -d "$PROJECT" ]; then
-        echo "Removing stale $PROJECT directory..."
-        rm -rf "$PROJECT"
-        git clone --depth 1 "$REPO_URL" "$PROJECT" || \
-        git clone --depth 1 "${REPO_URL/https:\/\/github.com\//git@github.com:}" "$PROJECT"
-    else
-        git clone --depth 1 "$REPO_URL" "$PROJECT" || \
-        git clone --depth 1 "${REPO_URL/https:\/\/github.com\//git@github.com:}" "$PROJECT"
-    fi
-}
+build_and_install() {
+    local src="$1"
 
-build_binary() {
+    cd "$src"
     cargo build --release
+
     mkdir -p "$HOME/.local/bin"
     cp "target/release/$PROJECT" "$HOME/.local/bin/"
     echo "Installed to ~/.local/bin/$PROJECT"
@@ -74,18 +63,20 @@ EOF
     fi
 }
 
+cleanup() {
+    [ -n "${_TMPDIR:-}" ] && rm -rf "$_TMPDIR"
+}
+
 main() {
     ensure_rust
 
-    if [ -f "Cargo.toml" ]; then
-        BUILD_DIR="$PWD"
-    else
-        clone_repo
-        BUILD_DIR="$PWD/$PROJECT"
-    fi
+    _TMPDIR="$(mktemp -d "/tmp/${PROJECT}-XXXXXX")"
+    trap cleanup EXIT
 
-    cd "$BUILD_DIR"
-    build_binary
+    git clone --depth 1 "$REPO_URL" "$_TMPDIR/$PROJECT" || \
+    git clone --depth 1 "${REPO_URL/https:\/\/github.com\//git@github.com:}" "$_TMPDIR/$PROJECT"
+
+    build_and_install "$_TMPDIR/$PROJECT"
     shell_aliases
     create_config
     echo "Installation complete! Run '$PROJECT --help'"
