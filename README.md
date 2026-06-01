@@ -36,7 +36,7 @@ backup-games --version          # show version (git describe)
 `~/.config/backup-games/config`:
 ```
 sources=~/Games
-dirsources=~/.local/share/honkers
+dirsources=~/.local/share/honkers-railway-launcher
 dest=/mnt/HDD4T/GAMES
 ```
 
