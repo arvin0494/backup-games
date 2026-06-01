@@ -36,14 +36,17 @@ build_binary() {
 
 shell_aliases() {
     local bin="$HOME/.local/bin/$PROJECT"
-    local alias1="alias $PROJECT='$bin'"
-    local alias2="alias bckup-games='$bin'"
-    for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.config/fish/config.fish"; do
+    for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
         if [ -f "$rc" ]; then
-            ! grep -q "alias $PROJECT=" "$rc" 2>/dev/null && echo "$alias1" >> "$rc" && echo "Added alias $PROJECT to $rc"
-            ! grep -q "alias bckup-games=" "$rc" 2>/dev/null && echo "$alias2" >> "$rc" && echo "Added alias bckup-games to $rc"
+            ! grep -q "alias $PROJECT=" "$rc" 2>/dev/null && echo "alias $PROJECT='$bin'" >> "$rc" && echo "Added alias $PROJECT to $rc"
+            ! grep -q "alias bckup-games=" "$rc" 2>/dev/null && echo "alias bckup-games='$bin'" >> "$rc" && echo "Added alias bckup-games to $rc"
         fi
     done
+    local fish="$HOME/.config/fish/config.fish"
+    if [ -f "$fish" ]; then
+        ! grep -q "alias $PROJECT " "$fish" 2>/dev/null && echo "alias $PROJECT '$bin'" >> "$fish" && echo "Added alias $PROJECT to $fish"
+        ! grep -q "alias bckup-games " "$fish" 2>/dev/null && echo "alias bckup-games '$bin'" >> "$fish" && echo "Added alias bckup-games to $fish"
+    fi
 }
 
 create_config() {
