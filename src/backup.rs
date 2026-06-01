@@ -1,7 +1,10 @@
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use crate::config;
 use crate::util::{self, e};
 use anyhow::Result;
+
+pub static INTERRUPTED: AtomicBool = AtomicBool::new(false);
 
 pub fn run_backup(source: &str, dest: &str, full: bool) -> Result<()> {
     e(&format!("Starting backup: {} → {}", source, dest));
@@ -33,13 +36,18 @@ pub fn run_backup(source: &str, dest: &str, full: bool) -> Result<()> {
     if subdirs.is_empty() {
         e("No subdirectories found, copying whole tree");
         util::copy_progress(source, dest, checkers, false, false)?;
-        return save_manifest(&manifest_path, &manifest);
+        return util::save_manifest(&manifest_path, &manifest);
     }
 
     let mut changed = 0u32;
     let mut skipped = 0u32;
 
     for (name, full_src, mtime) in &subdirs {
+        if INTERRUPTED.load(Ordering::SeqCst) {
+            e(&format!("{}Interrupted, exiting{}", util::YELLOW, util::RESET));
+            break;
+        }
+
         if !full && manifest.get(name.as_str()) == Some(mtime) {
             e(&format!("  {}{}{} unchanged", util::CYAN, name, util::RESET));
             skipped += 1;
@@ -47,16 +55,22 @@ pub fn run_backup(source: &str, dest: &str, full: bool) -> Result<()> {
         }
         let full_dst = format!("{}/{}", dest_expanded, name);
         e(&format!("  {}{}{} → ...", util::BOLD, name, util::RESET));
-        util::copy_progress(full_src, &full_dst, checkers, false, false)?;
+        if let Err(err) = util::copy_progress(full_src, &full_dst, checkers, false, false) {
+            if INTERRUPTED.load(Ordering::SeqCst) {
+                util::save_manifest(&manifest_path, &manifest)?;
+                e(&format!("{}Interrupted, saved progress{}", util::YELLOW, util::RESET));
+                return Ok(());
+            }
+            return Err(err);
+        }
         manifest.insert(name.clone(), *mtime);
+        if let Err(err) = util::save_manifest(&manifest_path, &manifest) {
+            e(&format!("{}Warning: failed to save manifest: {}{}", util::YELLOW, err, util::RESET));
+        }
         changed += 1;
     }
 
-    save_manifest(&manifest_path, &manifest)?;
+    util::save_manifest(&manifest_path, &manifest)?;
     e(&format!("Done: {} backed up, {} skipped", changed, skipped));
     Ok(())
-}
-
-fn save_manifest(path: &str, map: &HashMap<String, u64>) -> Result<()> {
-    util::save_manifest(path, map)
 }

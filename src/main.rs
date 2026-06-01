@@ -1,5 +1,6 @@
 use clap::Parser;
 use std::panic;
+use std::sync::atomic::Ordering;
 
 mod config;
 mod util;
@@ -28,6 +29,11 @@ struct Cli {
 }
 
 fn main() {
+    ctrlc::set_handler(move || {
+        backup::INTERRUPTED.store(true, Ordering::SeqCst);
+    })
+    .expect("Error setting Ctrl+C handler");
+
     util::init_log(config::LOG_FILE);
 
     let cli = Cli::parse();
