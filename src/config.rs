@@ -47,6 +47,15 @@ pub fn load_dir_sources(user_cfg: &HashMap<String, String>) -> Vec<String> {
     Vec::new()
 }
 
+pub fn load_min_size_gb(user_cfg: &HashMap<String, String>) -> u64 {
+    if let Some(s) = user_cfg.get("min_size") {
+        if let Ok(n) = s.trim().parse::<u64>() {
+            return n;
+        }
+    }
+    0
+}
+
 pub fn load_sources(user_cfg: &HashMap<String, String>, cli_source: Option<String>) -> Vec<String> {
     if let Some(s) = cli_source {
         return vec![s];

@@ -43,6 +43,7 @@ dest=/mnt/HDD4T/GAMES
 - `sources` — subdirectories are flattened into the destination root
 - `dirsources` — each source is copied as a whole directory keeping its own name
 - `source` — backward compat, single flat source
+- `min_size` — skip `dirsources` smaller than this many GB (0 = no limit)
 - CLI flag `--source`/`-s` overrides all config sources
 
 ## Dependencies

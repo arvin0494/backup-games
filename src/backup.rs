@@ -6,7 +6,7 @@ use anyhow::Result;
 
 pub static INTERRUPTED: AtomicBool = AtomicBool::new(false);
 
-pub fn run_backup(source: &str, dest: &str, full: bool, keep_dir: bool) -> Result<()> {
+pub fn run_backup(source: &str, dest: &str, full: bool, keep_dir: bool, min_size_gb: u64) -> Result<()> {
     e(&format!("Starting backup: {} → {}", source, dest));
 
     let src_expanded = util::expand_tilde(source);
@@ -43,6 +43,16 @@ pub fn run_backup(source: &str, dest: &str, full: bool, keep_dir: bool) -> Resul
         if !full && manifest.get(&dir_name) == Some(&mtime) {
             e(&format!("  {}{}{} unchanged", util::CYAN, dir_name, util::RESET));
             return Ok(());
+        }
+
+        if min_size_gb > 0 {
+            let size = util::dir_size_gb(&src_expanded);
+            if size < min_size_gb as f64 {
+                e(&format!("  {}{}{} too small ({:.1}G < {}G), skipped", util::YELLOW, dir_name, util::RESET, size, min_size_gb));
+                manifest.insert(dir_name, mtime);
+                util::save_manifest(&manifest_path, &manifest)?;
+                return Ok(());
+            }
         }
 
         e(&format!("  {}{}{} → ...", util::BOLD, dir_name, util::RESET));

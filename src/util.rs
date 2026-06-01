@@ -214,6 +214,12 @@ pub fn list_subdirs(path: &str) -> Result<Vec<(String, String, u64)>> {
     Ok(dirs)
 }
 
+pub fn dir_size_gb(path: &str) -> f64 {
+    let out = run(&format!("du -sb {} 2>/dev/null | cut -f1", path)).unwrap_or_default();
+    let bytes: f64 = out.parse().unwrap_or(0.0);
+    bytes / (1073741824.0) // bytes → GB
+}
+
 pub fn install_deps() -> Result<()> {
     let deps = ["rclone", "gdu", "fzf", "jq"];
     let missing: Vec<_> = deps
