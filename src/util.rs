@@ -139,6 +139,7 @@ pub fn copy_progress(src: &str, dst: &str, checkers: u32, _ntfs: bool, skip_link
         dst_expanded.clone(),
         "--progress".to_string(),
         format!("--checkers={}", checkers),
+        "--update".to_string(),
         "--verbose".to_string(),
     ];
 
