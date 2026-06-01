@@ -62,6 +62,8 @@ fn main() {
         return;
     }
 
+    check_update();
+
     if let Err(e) = util::install_deps() {
         util::e(&format!("{}Failed to install deps: {}{}", util::RED, e, util::RESET));
         std::process::exit(1);
@@ -118,7 +120,7 @@ fn check_update() {
             }
         }
         _ => {
-            util::e(&format!("{}Could not check for updates (no network?){}", util::RED, util::RESET));
+            util::e(&format!("{}Could not check for updates (no network or missing jq?){}", util::RED, util::RESET));
         }
     }
 }

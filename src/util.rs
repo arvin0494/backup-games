@@ -215,7 +215,7 @@ pub fn list_subdirs(path: &str) -> Result<Vec<(String, String, u64)>> {
 }
 
 pub fn install_deps() -> Result<()> {
-    let deps = ["rclone", "gdu", "fzf"];
+    let deps = ["rclone", "gdu", "fzf", "jq"];
     let missing: Vec<_> = deps
         .iter()
         .filter(|bin| {
