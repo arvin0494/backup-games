@@ -7,14 +7,19 @@ mod util;
 mod backup;
 mod restore;
 
+pub const VERSION: &str = env!("BUILD_VERSION");
+
 #[derive(Parser)]
-#[command(name = "backup-games", about = "Backup and restore ~/Games")]
+#[command(name = "backup-games", about = "Backup and restore ~/Games", version = VERSION)]
 struct Cli {
     #[arg(short = 'b', long = "backup")]
     backup: bool,
 
     #[arg(short = 'r', long = "restore")]
     restore: bool,
+
+    #[arg(long = "check-update")]
+    check_update: bool,
 
     #[arg(long = "full")]
     full: bool,
@@ -52,6 +57,11 @@ fn main() {
         .or_else(|| user_cfg.get("dest").cloned())
         .unwrap_or_else(|| config::DEFAULT_DEST.to_string());
 
+    if cli.check_update {
+        check_update();
+        return;
+    }
+
     if let Err(e) = util::install_deps() {
         util::e(&format!("{}Failed to install deps: {}{}", util::RED, e, util::RESET));
         std::process::exit(1);
@@ -81,6 +91,32 @@ fn main() {
         Err(_) => {
             util::e(&format!("{}{}Cancelled{}", util::BOLD, util::YELLOW, util::RESET));
             std::process::exit(1);
+        }
+    }
+}
+
+fn check_update() {
+    let latest = util::run(
+        "curl -sSL https://api.github.com/repos/arvin0494/backup-games/tags 2>/dev/null | \
+         grep -o '\"name\":\"[^\"]*\"' | head -1 | cut -d'\"' -f4",
+    );
+
+    match latest {
+        Ok(tag) => {
+            let local = VERSION.trim_start_matches('v');
+            let remote = tag.trim_start_matches('v');
+            if remote == local {
+                util::e(&format!("{}{} up to date ({}){}", util::GREEN, VERSION, tag, util::RESET));
+            } else {
+                util::e(&format!(
+                    "{}Update available: {} → {} {}{}",
+                    util::BOLD, VERSION, tag, util::YELLOW, util::RESET
+                ));
+                util::e("Run: curl -sSL https://github.com/arvin0494/backup-games/raw/main/install.sh | bash");
+            }
+        }
+        Err(_) => {
+            util::e(&format!("{}Could not check for updates (no network?){}", util::RED, util::RESET));
         }
     }
 }
