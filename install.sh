@@ -23,8 +23,19 @@ ensure_rust() {
 }
 
 clone_repo() {
-    git clone --depth 1 "$REPO_URL" "$PROJECT" || \
-    git clone --depth 1 "${REPO_URL/https:\/\/github.com\//git@github.com:}" "$PROJECT"
+    if [ -d "$PROJECT/.git" ]; then
+        cd "$PROJECT"
+        git pull
+        cd ..
+    elif [ -d "$PROJECT" ]; then
+        echo "Removing stale $PROJECT directory..."
+        rm -rf "$PROJECT"
+        git clone --depth 1 "$REPO_URL" "$PROJECT" || \
+        git clone --depth 1 "${REPO_URL/https:\/\/github.com\//git@github.com:}" "$PROJECT"
+    else
+        git clone --depth 1 "$REPO_URL" "$PROJECT" || \
+        git clone --depth 1 "${REPO_URL/https:\/\/github.com\//git@github.com:}" "$PROJECT"
+    fi
 }
 
 build_binary() {
