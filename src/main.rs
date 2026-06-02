@@ -30,6 +30,9 @@ struct Cli {
     #[arg(short = 's', long = "source")]
     source: Option<String>,
 
+    #[arg(short = 'f', long = "force-folder")]
+    force_folder: Vec<String>,
+
     dest: Option<String>,
 }
 
@@ -95,10 +98,10 @@ fn main() {
             restore::run_restore(&sources, &dest)
         } else {
             for source in &sources {
-                backup::run_backup(source, &dest, cli.full, false, 0)?;
+                backup::run_backup(source, &dest, cli.full, &cli.force_folder, false, 0)?;
             }
             for source in &dir_sources {
-                backup::run_backup(source, &dest, cli.full, true, min_size_gb)?;
+                backup::run_backup(source, &dest, cli.full, &cli.force_folder, true, min_size_gb)?;
             }
             Ok(())
         }

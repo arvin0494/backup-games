@@ -6,7 +6,7 @@ use anyhow::Result;
 
 pub static INTERRUPTED: AtomicBool = AtomicBool::new(false);
 
-pub fn run_backup(source: &str, dest: &str, full: bool, keep_dir: bool, min_size_gb: u64) -> Result<()> {
+pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String], keep_dir: bool, min_size_gb: u64) -> Result<()> {
     e(&format!("Starting backup: {} → {}", source, dest));
 
     let src_expanded = util::expand_tilde(source);
@@ -40,7 +40,7 @@ pub fn run_backup(source: &str, dest: &str, full: bool, keep_dir: bool, min_size
         let full_dst = format!("{}/{}", dest_expanded, dir_name);
         let mtime = util::dir_mtime(&src_expanded).unwrap_or(0);
 
-        if !full && manifest.get(&dir_name) == Some(&mtime) {
+        if !full && !force_folders.contains(&dir_name) && manifest.get(&dir_name) == Some(&mtime) {
             e(&format!("  {}{}{} unchanged", util::CYAN, dir_name, util::RESET));
             return Ok(());
         }
@@ -79,7 +79,7 @@ pub fn run_backup(source: &str, dest: &str, full: bool, keep_dir: bool, min_size
             break;
         }
 
-        if !full && manifest.get(name.as_str()) == Some(mtime) {
+        if !full && !force_folders.contains(name) && manifest.get(name.as_str()) == Some(mtime) {
             e(&format!("  {}{}{} unchanged", util::CYAN, name, util::RESET));
             skipped += 1;
             continue;
