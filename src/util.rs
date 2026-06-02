@@ -129,7 +129,7 @@ fn get_os_id() -> String {
     "linux".into()
 }
 
-pub fn copy_progress(src: &str, dst: &str, checkers: u32, _ntfs: bool, skip_links: bool) -> Result<()> {
+pub fn copy_progress(src: &str, dst: &str, checkers: u32, ntfs: bool, skip_links: bool) -> Result<()> {
     let src_expanded = expand_tilde(src);
     let dst_expanded = expand_tilde(dst);
 
@@ -138,13 +138,18 @@ pub fn copy_progress(src: &str, dst: &str, checkers: u32, _ntfs: bool, skip_link
         src_expanded.clone(),
         dst_expanded.clone(),
         "--progress".to_string(),
+        "--stats=1s".to_string(),
         format!("--checkers={}", checkers),
+        format!("--transfers={}", checkers),
         "--update".to_string(),
         "--verbose".to_string(),
     ];
 
     if skip_links {
         args.push("--skip-links".to_string());
+    }
+    if ntfs {
+        args.push("--ignore-errors".to_string());
     }
 
     fs::create_dir_all(&dst_expanded).context("Failed to create destination directory")?;
