@@ -110,6 +110,21 @@ EOF
 
 cleanup() { [ -n "${_TMPDIR:-}" ] && rm -rf "$_TMPDIR"; }
 
+show_changelog() {
+    local changelog="$1/CHANGELOG.md"
+    if [ ! -f "$changelog" ]; then return; fi
+    printf "\n${D}  ┌──────────────────────────────────────────────────────┐${N}\n"
+    printf "${G}  │ WHAT'S NEW                                         ${N}\n"
+    printf "${D}  └──────────────────────────────────────────────────────┘${N}\n"
+    while IFS= read -r line; do
+        case "$line" in
+            "## v"*) printf "  ${B}${G}%s${N}\n" "${line### }" ;;
+            "- "*)   printf "  ${C}▸${N} %s\n" "${line#- }" ;;
+        esac
+    done < "$changelog"
+    echo
+}
+
 main() {
     if [ "${1:-}" = "--uninstall" ]; then
         exec "$(dirname "$0")/uninstall.sh"
@@ -140,6 +155,7 @@ main() {
 
     section 2 "BUILDING BINARY"
     build_and_install "$_TMPDIR/$PROJECT"
+    show_changelog "$_TMPDIR/$PROJECT"
 
     section 3 "CONFIGURING SYSTEM"
     shell_aliases

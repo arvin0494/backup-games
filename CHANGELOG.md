@@ -1,0 +1,21 @@
+# Changelog
+
+## v2.1.0 — 2025-06-05
+
+- **--update** flag added to rclone: skip files newer on remote (multi-device safety)
+- **Daily update check**: only prompts once per day, `--check-update` forces it
+- **exclude config key**: skip subdirectories in flat sources (name or absolute path)
+- **dirsources relative paths**: preserves path structure under ~/Games for proper restore
+- **Prune**: excluded directories are cleaned from destination after backup
+- **Chown**: destination files owned to user after copy (external drive fix)
+- **Uninstall script**: `uninstall.sh` or `install.sh --uninstall`
+- **Config always updated**: installer overwrites config with latest defaults (old backed up)
+
+## v0.1.0 — 2025-05-30
+
+- Initial release
+- Flat and directory sources
+- Change tracking via manifest
+- Ctrl+C graceful handling
+- fzf-based restore
+- Hardware-tuned rclone parallelism
