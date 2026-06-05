@@ -91,9 +91,12 @@ shell_aliases() {
 create_config() {
     local cfg_dir="$HOME/.config/$PROJECT"
     local cfg_file="$cfg_dir/config"
-    if [ ! -f "$cfg_file" ]; then
-        mkdir -p "$cfg_dir"
-        cat > "$cfg_file" << 'EOF'
+    if [ -f "$cfg_file" ]; then
+        cp "$cfg_file" "${cfg_file}.bak"
+        warn "Backed up existing config to ${cfg_file}.bak"
+    fi
+    mkdir -p "$cfg_dir"
+    cat > "$cfg_file" << 'EOF'
 # backup-games configuration
 sources=~/Games
 dirsources=~/Games/honkers-railway-launcher/HSR,~/.local/share/honkers
@@ -102,8 +105,7 @@ exclude=~/Games/honkers-railway-launcher
 dest=/mnt/HDD4T/GAMES
 min_size=1
 EOF
-        ok "Config" "$cfg_file"
-    fi
+    ok "Config" "$cfg_file"
 }
 
 cleanup() { [ -n "${_TMPDIR:-}" ] && rm -rf "$_TMPDIR"; }
