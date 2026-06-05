@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.1.1 — 2025-06-05
+
+- **Remove automatic update prompt**: `--check-update` still works manually
+- **Prune safety**: `rclone delete` instead of `purge` to preserve dirsource subdirs
+- **Exclude absolute paths**: supports `~/Games/honkers-railway-launcher` in exclude
+- **Fix**: don't copy whole tree when all subdirs excluded
+- **Prune order**: deleted after backup completes (safe from interruption)
+
 ## v2.1.0 — 2025-06-05
 
 - **--update** flag added to rclone: skip files newer on remote (multi-device safety)
