@@ -165,6 +165,12 @@ pub fn copy_progress(src: &str, dst: &str, checkers: u32, ntfs: bool, skip_links
     if !status.success() {
         bail!("rclone copy failed");
     }
+
+    let _ = Command::new("sh")
+        .arg("-c")
+        .arg(format!("sudo chown -R --dereference $(id -u):$(id -g) \"{}\" 2>/dev/null", &dst_expanded))
+        .status();
+
     Ok(())
 }
 
