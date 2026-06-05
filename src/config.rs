@@ -56,6 +56,16 @@ pub fn load_min_size_gb(user_cfg: &HashMap<String, String>) -> u64 {
     0
 }
 
+pub fn load_excludes(user_cfg: &HashMap<String, String>) -> Vec<String> {
+    if let Some(s) = user_cfg.get("exclude") {
+        return s.split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+    }
+    Vec::new()
+}
+
 pub fn load_sources(user_cfg: &HashMap<String, String>, cli_source: Option<String>) -> Vec<String> {
     if let Some(s) = cli_source {
         return vec![s];

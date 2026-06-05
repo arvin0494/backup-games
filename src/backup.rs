@@ -6,7 +6,7 @@ use anyhow::Result;
 
 pub static INTERRUPTED: AtomicBool = AtomicBool::new(false);
 
-pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String], keep_dir: bool, min_size_gb: u64) -> Result<()> {
+pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String], keep_dir: bool, min_size_gb: u64, excludes: &[String]) -> Result<()> {
     e(&format!("Starting backup: {} → {}", source, dest));
 
     let src_expanded = util::expand_tilde(source);
@@ -64,6 +64,15 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
     }
 
     let subdirs = util::list_subdirs(&src_expanded)?;
+
+    let subdirs = if !excludes.is_empty() {
+        subdirs.into_iter()
+            .filter(|(name, _, _)| !excludes.contains(name))
+            .collect()
+    } else {
+        subdirs
+    };
+
     if subdirs.is_empty() {
         e("No subdirectories found, copying whole tree");
         util::copy_progress(source, dest, checkers, false, false)?;
