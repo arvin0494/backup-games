@@ -71,8 +71,11 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
     let subdirs = util::list_subdirs(&src_expanded)?;
 
     let subdirs = if !excludes.is_empty() {
+        let is_excluded = |name: &str, full_src: &str| -> bool {
+            excludes.iter().any(|e| e == name || util::expand_tilde(e) == full_src)
+        };
         let excluded_names: Vec<_> = subdirs.iter()
-            .filter(|(name, _, _)| excludes.contains(name))
+            .filter(|(name, full_src, _)| is_excluded(name, full_src))
             .map(|(name, _, _)| name.clone())
             .collect();
         for name in &excluded_names {
@@ -84,7 +87,7 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
             }
         }
         subdirs.into_iter()
-            .filter(|(name, _, _)| !excludes.contains(name))
+            .filter(|(name, full_src, _)| !is_excluded(name, full_src))
             .collect()
     } else {
         subdirs
