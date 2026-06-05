@@ -141,7 +141,7 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
         let stale = format!("{}/{}", dest_expanded, name);
         if std::path::Path::new(&stale).exists() {
             e(&format!("  pruning stale: {}...", name));
-            let _ = util::run(&format!("rclone purge \"{}\" 2>/dev/null || rm -rf \"{}\"", stale, stale));
+            let _ = util::run(&format!("rclone delete \"{}\" 2>/dev/null", stale));
             e(&format!("  {}{}{} pruned", util::YELLOW, name, util::RESET));
         }
     }
