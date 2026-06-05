@@ -33,10 +33,15 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
     };
 
     if keep_dir {
-        let dir_name = std::path::Path::new(&src_expanded)
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_else(|| "backup".to_string());
+        let games_prefix = util::expand_tilde("~/Games");
+        let dir_name = if src_expanded.starts_with(&games_prefix) {
+            src_expanded[games_prefix.len()..].trim_start_matches('/').to_string()
+        } else {
+            std::path::Path::new(&src_expanded)
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_else(|| "backup".to_string())
+        };
         let full_dst = format!("{}/{}", dest_expanded, dir_name);
         let mtime = util::dir_mtime(&src_expanded).unwrap_or(0);
 
