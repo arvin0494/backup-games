@@ -71,6 +71,18 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
     let subdirs = util::list_subdirs(&src_expanded)?;
 
     let subdirs = if !excludes.is_empty() {
+        let excluded_names: Vec<_> = subdirs.iter()
+            .filter(|(name, _, _)| excludes.contains(name))
+            .map(|(name, _, _)| name.clone())
+            .collect();
+        for name in &excluded_names {
+            let stale = format!("{}/{}", dest_expanded, name);
+            if std::path::Path::new(&stale).exists() {
+                e(&format!("  pruning stale: {}...", name));
+                let _ = util::run(&format!("rclone purge \"{}\" 2>/dev/null || rm -rf \"{}\"", stale, stale));
+                e(&format!("  {}{}{} pruned", util::YELLOW, name, util::RESET));
+            }
+        }
         subdirs.into_iter()
             .filter(|(name, _, _)| !excludes.contains(name))
             .collect()
