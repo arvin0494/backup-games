@@ -37,6 +37,7 @@ backup-games --version          # show version (git describe)
 ```
 sources=~/Games
 dirsources=~/Games/honkers-railway-launcher/HSR,~/.local/share/honkers
+exclude=~/Games/honkers-railway-launcher
 dest=/mnt/HDD4T/GAMES
 ```
 
@@ -44,6 +45,7 @@ dest=/mnt/HDD4T/GAMES
 - `dirsources` — each source is copied as a whole directory keeping its own name
 - `source` — backward compat, single flat source
 - `min_size` — skip `dirsources` smaller than this many GB (0 = no limit)
+- `exclude` — comma-separated dir names or paths to skip in flat sources
 - CLI flag `--source`/`-s` overrides all config sources
 
 ## Dependencies
