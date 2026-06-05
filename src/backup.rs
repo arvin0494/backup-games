@@ -70,22 +70,23 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
 
     let subdirs = util::list_subdirs(&src_expanded)?;
 
-    let subdirs = if !excludes.is_empty() {
+    let excluded_names: Vec<String> = if !excludes.is_empty() {
         let is_excluded = |name: &str, full_src: &str| -> bool {
             excludes.iter().any(|e| e == name || util::expand_tilde(e) == full_src)
         };
-        let excluded_names: Vec<_> = subdirs.iter()
+        let excluded: Vec<_> = subdirs.iter()
             .filter(|(name, full_src, _)| is_excluded(name, full_src))
             .map(|(name, _, _)| name.clone())
             .collect();
-        for name in &excluded_names {
-            let stale = format!("{}/{}", dest_expanded, name);
-            if std::path::Path::new(&stale).exists() {
-                e(&format!("  pruning stale: {}...", name));
-                let _ = util::run(&format!("rclone purge \"{}\" 2>/dev/null || rm -rf \"{}\"", stale, stale));
-                e(&format!("  {}{}{} pruned", util::YELLOW, name, util::RESET));
-            }
-        }
+        excluded
+    } else {
+        Vec::new()
+    };
+
+    let subdirs: Vec<_> = if !excludes.is_empty() {
+        let is_excluded = |name: &str, full_src: &str| -> bool {
+            excludes.iter().any(|e| e == name || util::expand_tilde(e) == full_src)
+        };
         subdirs.into_iter()
             .filter(|(name, full_src, _)| !is_excluded(name, full_src))
             .collect()
@@ -131,6 +132,16 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
     }
 
     util::save_manifest(&manifest_path, &manifest)?;
+
+    for name in &excluded_names {
+        let stale = format!("{}/{}", dest_expanded, name);
+        if std::path::Path::new(&stale).exists() {
+            e(&format!("  pruning stale: {}...", name));
+            let _ = util::run(&format!("rclone purge \"{}\" 2>/dev/null || rm -rf \"{}\"", stale, stale));
+            e(&format!("  {}{}{} pruned", util::YELLOW, name, util::RESET));
+        }
+    }
+
     e(&format!("Done: {} backed up, {} skipped", changed, skipped));
     Ok(())
 }
