@@ -96,7 +96,7 @@ create_config() {
         cat > "$cfg_file" << 'EOF'
 # backup-games configuration
 sources=~/Games
-dirsources=~/Games/honkers-railway-launcher/HSR,~/.local/share/honkers
+dirsources=~/Games/honkers-railway-launcher/HSR,~/.local/share/honkers,~/Games/honkers
 # exclude can be a dir name or absolute path (e.g. honkers-railway-launcher or ~/Games/honkers-railway-launcher)
 exclude=honkers-railway-launcher
 dest=/mnt/HDD4T/GAMES
