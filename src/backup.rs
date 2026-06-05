@@ -94,10 +94,14 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
         subdirs
     };
 
-    if subdirs.is_empty() {
+    if subdirs.is_empty() && excluded_names.is_empty() {
         e("No subdirectories found, copying whole tree");
         util::copy_progress(source, dest, checkers, false, false)?;
         return util::save_manifest(&manifest_path, &manifest);
+    }
+
+    if subdirs.is_empty() {
+        e("All subdirectories excluded, nothing to back up");
     }
 
     let mut changed = 0u32;
