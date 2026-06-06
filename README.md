@@ -46,7 +46,20 @@ dest=/mnt/HDD4T/GAMES
 - `source` — backward compat, single flat source
 - `min_size` — skip `dirsources` smaller than this many GB (0 = no limit)
 - `exclude` — comma-separated dir names or paths to skip in flat sources
+- `backup_exclude` — rclone `--exclude` patterns applied during both backup and restore (e.g. `webCaches/`)
 - CLI flag `--source`/`-s` overrides all config sources
+
+## Game-specific notes
+
+### Honkai Star Rail (honkers-railway-launcher)
+
+The launcher stores machine-specific browser cache inside its `HSR/StarRail_Data/webCaches/` directory. Restoring this from another PC causes the launcher to detect content mismatches and re-download the game (~10 GB).
+
+**Fix:** add to your config:
+```
+backup_exclude = webCaches/
+```
+This skips `webCaches/` (at any depth) during backup and restore. Each PC keeps its own cache, and the actual game data remains identical. After adding, run a fresh backup to purge it from the destination.
 
 ## Dependencies
 
