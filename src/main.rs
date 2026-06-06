@@ -51,6 +51,7 @@ fn main() {
     let sources = config::load_sources(&user_cfg, cli.source.clone());
     let dir_sources = config::load_dir_sources(&user_cfg);
     let excludes = config::load_excludes(&user_cfg);
+    let backup_exclude = config::load_backup_excludes(&user_cfg);
     let min_size_gb = config::load_min_size_gb(&user_cfg);
 
     let dest = cli
@@ -71,13 +72,13 @@ fn main() {
 
     let result = panic::catch_unwind(|| {
         if cli.restore {
-            restore::run_restore(&dest)
+            restore::run_restore(&dest, &backup_exclude)
         } else {
             for source in &sources {
-                backup::run_backup(source, &dest, cli.full, &cli.force_folder, false, 0, &excludes)?;
+                backup::run_backup(source, &dest, cli.full, &cli.force_folder, false, 0, &excludes, &backup_exclude)?;
             }
             for source in &dir_sources {
-                backup::run_backup(source, &dest, cli.full, &cli.force_folder, true, min_size_gb, &excludes)?;
+                backup::run_backup(source, &dest, cli.full, &cli.force_folder, true, min_size_gb, &excludes, &backup_exclude)?;
             }
             Ok(())
         }

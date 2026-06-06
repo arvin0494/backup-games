@@ -4,7 +4,37 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 
-pub fn run_restore(backup_dest: &str) -> Result<()> {
+fn pick_subdir(backup_item: &str) -> Result<Option<String>> {
+    let subdirs = util::run(&format!(
+        "find \"{}\" -mindepth 1 -maxdepth 1 -type d | sort", backup_item
+    ))?;
+    let lines: Vec<&str> = subdirs.lines().filter(|l| !l.is_empty()).collect();
+    if lines.is_empty() {
+        return Ok(None);
+    }
+    if lines.len() == 1 {
+        let single = lines[0].trim();
+        e(&format!("  single subdirectory found: {}", Path::new(single).file_name().unwrap_or_default().to_string_lossy()));
+        return Ok(Some(single.to_string()));
+    }
+    let sel_file = "/tmp/backup-games-subdir-selection.txt";
+    let item_file = "/tmp/backup-games-subdir-items.txt";
+    fs::write(item_file, &subdirs)?;
+    e("  multiple subdirectories found, pick one:");
+    util::run_ok(&format!(
+        "fzf --prompt='Select subdirectory > ' < {} > {}",
+        item_file, sel_file
+    ))?;
+    let selected = fs::read_to_string(sel_file)?
+        .trim()
+        .to_string();
+    if selected.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(selected))
+}
+
+pub fn run_restore(backup_dest: &str, restore_exclude: &[String]) -> Result<()> {
     let backup_dest = util::expand_tilde(backup_dest);
     let backup_path = Path::new(&backup_dest);
 
@@ -53,13 +83,21 @@ pub fn run_restore(backup_dest: &str) -> Result<()> {
 
     e(&format!("Restoring {} item(s) to {}...", selections.len(), restore_dest));
     for item in &selections {
-        let item_name = Path::new(item)
-            .file_name()
-            .map(|n| n.to_string_lossy())
-            .unwrap_or_default();
-        let dest_item = format!("{}/{}", restore_dest, item_name);
-        e(&format!("  {item_name} → {dest_item}"));
-        util::copy_progress(item, &dest_item, 4, false, false, false)?;
+        let item_path = Path::new(item);
+        let backup_root = Path::new(&backup_dest);
+        let rel = item_path.strip_prefix(backup_root).unwrap_or(item_path);
+        let dest_item = format!("{}/{}", restore_dest, rel.display());
+
+        if let Some(sub) = pick_subdir(item)? {
+            let sub_path = Path::new(&sub);
+            let sub_rel = sub_path.strip_prefix(backup_root).unwrap_or(sub_path);
+            let sub_dest = format!("{}/{}", restore_dest, sub_rel.display());
+            e(&format!("  {} → {}", sub_rel.display(), sub_dest));
+            util::copy_progress(&sub, &sub_dest, 4, false, false, false, false, &restore_exclude)?;
+        } else {
+            e(&format!("  {} → {}", rel.display(), dest_item));
+            util::copy_progress(item, &dest_item, 4, false, false, false, false, &restore_exclude)?;
+        }
     }
 
     Ok(())

@@ -129,7 +129,7 @@ fn get_os_id() -> String {
     "linux".into()
 }
 
-pub fn copy_progress(src: &str, dst: &str, checkers: u32, ntfs: bool, skip_links: bool, update: bool) -> Result<()> {
+pub fn copy_progress(src: &str, dst: &str, checkers: u32, ntfs: bool, skip_links: bool, update: bool, checksum: bool, exclude: &[String]) -> Result<()> {
     let src_expanded = expand_tilde(src);
     let dst_expanded = expand_tilde(dst);
 
@@ -146,6 +146,13 @@ pub fn copy_progress(src: &str, dst: &str, checkers: u32, ntfs: bool, skip_links
 
     if update {
         args.push("--update".to_string());
+    }
+    if checksum {
+        args.push("--checksum".to_string());
+    }
+    for pattern in exclude {
+        args.push("--exclude".to_string());
+        args.push(pattern.to_string());
     }
 
     if skip_links {
