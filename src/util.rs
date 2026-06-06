@@ -129,9 +129,28 @@ fn get_os_id() -> String {
     "linux".into()
 }
 
-pub fn copy_progress(src: &str, dst: &str, checkers: u32, ntfs: bool, skip_links: bool, update: bool, checksum: bool, exclude: &[String]) -> Result<()> {
-    let src_expanded = expand_tilde(src);
-    let dst_expanded = expand_tilde(dst);
+pub struct CopyOpts<'a> {
+    pub src: &'a str,
+    pub dst: &'a str,
+    pub checkers: u32,
+    pub ntfs: bool,
+    pub skip_links: bool,
+    pub update: bool,
+    pub exclude: &'a [String],
+}
+
+impl<'a> CopyOpts<'a> {
+    pub fn new(src: &'a str, dst: &'a str) -> Self {
+        Self { src, dst, checkers: 4, ntfs: false, skip_links: false, update: false, exclude: &[] }
+    }
+    pub fn checkers(mut self, n: u32) -> Self { self.checkers = n; self }
+    pub fn update(mut self, v: bool) -> Self { self.update = v; self }
+    pub fn exclude(mut self, v: &'a [String]) -> Self { self.exclude = v; self }
+}
+
+pub fn copy_progress(opts: &CopyOpts) -> Result<()> {
+    let src_expanded = expand_tilde(opts.src);
+    let dst_expanded = expand_tilde(opts.dst);
 
     let mut args = vec![
         "copy".to_string(),
@@ -139,26 +158,23 @@ pub fn copy_progress(src: &str, dst: &str, checkers: u32, ntfs: bool, skip_links
         dst_expanded.clone(),
         "--progress".to_string(),
         "--stats=1s".to_string(),
-        format!("--checkers={}", checkers),
-        format!("--transfers={}", checkers),
+        format!("--checkers={}", opts.checkers),
+        format!("--transfers={}", opts.checkers),
         "--verbose".to_string(),
     ];
 
-    if update {
+    if opts.update {
         args.push("--update".to_string());
     }
-    if checksum {
-        args.push("--checksum".to_string());
-    }
-    for pattern in exclude {
+    for pattern in opts.exclude {
         args.push("--exclude".to_string());
         args.push(pattern.to_string());
     }
 
-    if skip_links {
+    if opts.skip_links {
         args.push("--skip-links".to_string());
     }
-    if ntfs {
+    if opts.ntfs {
         args.push("--ignore-errors".to_string());
     }
 

@@ -4,7 +4,7 @@
 
 - **Subdirectory restore**: when restoring a dirsource, auto-detect single subdir or fzf-pick multiple, preserving relative paths
 - **backup_exclude config**: rclone `--exclude` patterns (e.g. `webCaches/`) skipped during backup and restore
-- **--checksum support**: optional on restore for byte-for-byte verification (slow, use backup_exclude instead)
+- **Refactor**: `CopyOpts` builder replaces 8-param `copy_progress` signature; deduplicated exclude logic in backup
 
 ## v2.1.2 — 2025-06-06
 

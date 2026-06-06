@@ -1,32 +1,31 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use crate::config;
-use crate::util::{self, e};
+use crate::util::{self, e, CopyOpts};
 use anyhow::Result;
+use std::path::Path;
 
 pub static INTERRUPTED: AtomicBool = AtomicBool::new(false);
 
-pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String], keep_dir: bool, min_size_gb: u64, excludes: &[String], backup_exclude: &[String]) -> Result<()> {
-    e(&format!("Starting backup: {} → {}", source, dest));
+fn is_excluded(name: &str, full_src: &str, excludes: &[String]) -> bool {
+    excludes.iter().any(|e| e == name || util::expand_tilde(e) == full_src)
+}
 
-    let src_expanded = util::expand_tilde(source);
+fn run_source_backup(
+    src: &str,
+    dest: &str,
+    full: bool,
+    force_folders: &[String],
+    keep_dir: bool,
+    min_size_gb: u64,
+    excludes: &[String],
+    backup_exclude: &[String],
+) -> Result<usize> {
+    let src_expanded = util::expand_tilde(src);
     let dest_expanded = util::expand_tilde(dest);
-
-    let src = source.to_string();
-    let est = std::thread::spawn(move || {
-        if let Ok(size) = util::run(&format!("du -sh {} 2>/dev/null || true", util::expand_tilde(&src))) {
-            e(&format!("Estimated size: {}{}{}", util::CYAN, size, util::RESET));
-        }
-    });
-
     let checkers = util::detect_checkers(dest);
-    let kind = if checkers <= 3 { "HDD" } else if checkers <= 8 { "SSD" } else { "NVMe" };
-    e(&format!("Checkers: {} ({})", checkers, kind));
-    let _ = est.join();
-
     let manifest_path = util::expand_tilde(config::MANIFEST_FILE);
     let mut manifest: HashMap<String, u64> = if full {
-        e("Full backup requested, ignoring manifest");
         HashMap::new()
     } else {
         util::load_manifest(&manifest_path)
@@ -37,7 +36,7 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
         let dir_name = if src_expanded.starts_with(&games_prefix) {
             src_expanded[games_prefix.len()..].trim_start_matches('/').to_string()
         } else {
-            std::path::Path::new(&src_expanded)
+            Path::new(&src_expanded)
                 .file_name()
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_else(|| "backup".to_string())
@@ -45,9 +44,12 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
         let full_dst = format!("{}/{}", dest_expanded, dir_name);
         let mtime = util::dir_mtime(&src_expanded).unwrap_or(0);
 
-        if !full && !force_folders.contains(&dir_name) && manifest.get(&dir_name) == Some(&mtime) {
+        if !full
+            && !force_folders.contains(&dir_name)
+            && manifest.get(&dir_name) == Some(&mtime)
+        {
             e(&format!("  {}{}{} unchanged", util::CYAN, dir_name, util::RESET));
-            return Ok(());
+            return Ok(0);
         }
 
         if min_size_gb > 0 {
@@ -56,52 +58,38 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
                 e(&format!("  {}{}{} too small ({:.1}G < {}G), skipped", util::YELLOW, dir_name, util::RESET, size, min_size_gb));
                 manifest.insert(dir_name, mtime);
                 util::save_manifest(&manifest_path, &manifest)?;
-                return Ok(());
+                return Ok(0);
             }
         }
 
         e(&format!("  {}{}{} → ...", util::BOLD, dir_name, util::RESET));
-        util::copy_progress(&src_expanded, &full_dst, checkers, false, false, true, false, &backup_exclude)?;
+        util::copy_progress(&CopyOpts::new(&src_expanded, &full_dst).checkers(checkers).update(true).exclude(backup_exclude))?;
         manifest.insert(dir_name, mtime);
         util::save_manifest(&manifest_path, &manifest)?;
-        e("Done: 1 backed up");
-        return Ok(());
+        return Ok(1);
     }
 
     let subdirs = util::list_subdirs(&src_expanded)?;
 
-    let excluded_names: Vec<String> = if !excludes.is_empty() {
-        let is_excluded = |name: &str, full_src: &str| -> bool {
-            excludes.iter().any(|e| e == name || util::expand_tilde(e) == full_src)
-        };
-        let excluded: Vec<_> = subdirs.iter()
-            .filter(|(name, full_src, _)| is_excluded(name, full_src))
-            .map(|(name, _, _)| name.clone())
-            .collect();
-        excluded
-    } else {
-        Vec::new()
-    };
+    let excluded_names: Vec<String> = subdirs.iter()
+        .filter(|(name, full_src, _)| is_excluded(name, full_src, excludes))
+        .map(|(name, _, _)| name.clone())
+        .collect();
 
-    let subdirs: Vec<_> = if !excludes.is_empty() {
-        let is_excluded = |name: &str, full_src: &str| -> bool {
-            excludes.iter().any(|e| e == name || util::expand_tilde(e) == full_src)
-        };
-        subdirs.into_iter()
-            .filter(|(name, full_src, _)| !is_excluded(name, full_src))
-            .collect()
-    } else {
-        subdirs
-    };
+    let subdirs: Vec<_> = subdirs.into_iter()
+        .filter(|(name, full_src, _)| !is_excluded(name, full_src, excludes))
+        .collect();
 
     if subdirs.is_empty() && excluded_names.is_empty() {
         e("No subdirectories found, copying whole tree");
-        util::copy_progress(source, dest, checkers, false, false, true, false, &backup_exclude)?;
-        return util::save_manifest(&manifest_path, &manifest);
+        util::copy_progress(&CopyOpts::new(src, dest).checkers(checkers).update(true).exclude(backup_exclude))?;
+        util::save_manifest(&manifest_path, &manifest)?;
+        return Ok(1);
     }
 
     if subdirs.is_empty() {
         e("All subdirectories excluded, nothing to back up");
+        return Ok(0);
     }
 
     let mut changed = 0u32;
@@ -120,11 +108,11 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
         }
         let full_dst = format!("{}/{}", dest_expanded, name);
         e(&format!("  {}{}{} → ...", util::BOLD, name, util::RESET));
-        if let Err(err) = util::copy_progress(full_src, &full_dst, checkers, false, false, true, false, &backup_exclude) {
+        if let Err(err) = util::copy_progress(&CopyOpts::new(full_src, &full_dst).checkers(checkers).update(true).exclude(backup_exclude)) {
             if INTERRUPTED.load(Ordering::SeqCst) {
                 util::save_manifest(&manifest_path, &manifest)?;
                 e(&format!("{}Interrupted, saved progress{}", util::YELLOW, util::RESET));
-                return Ok(());
+                return Ok(changed as usize);
             }
             return Err(err);
         }
@@ -139,7 +127,7 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
 
     for name in &excluded_names {
         let stale = format!("{}/{}", dest_expanded, name);
-        if std::path::Path::new(&stale).exists() {
+        if Path::new(&stale).exists() {
             e(&format!("  pruning stale: {}...", name));
             let _ = util::run(&format!("rclone delete \"{}\" 2>/dev/null", stale));
             e(&format!("  {}{}{} pruned", util::YELLOW, name, util::RESET));
@@ -147,5 +135,28 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
     }
 
     e(&format!("Done: {} backed up, {} skipped", changed, skipped));
+    Ok(changed as usize)
+}
+
+pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String], keep_dir: bool, min_size_gb: u64, excludes: &[String], backup_exclude: &[String]) -> Result<()> {
+    e(&format!("Starting backup: {} → {}", source, dest));
+
+    let src = source.to_string();
+    let est = std::thread::spawn(move || {
+        if let Ok(size) = util::run(&format!("du -sh {} 2>/dev/null || true", util::expand_tilde(&src))) {
+            e(&format!("Estimated size: {}{}{}", util::CYAN, size, util::RESET));
+        }
+    });
+
+    let checkers = util::detect_checkers(dest);
+    let kind = if checkers <= 3 { "HDD" } else if checkers <= 8 { "SSD" } else { "NVMe" };
+    e(&format!("Checkers: {} ({})", checkers, kind));
+    let _ = est.join();
+
+    if full {
+        e("Full backup requested, ignoring manifest");
+    }
+
+    run_source_backup(source, dest, full, force_folders, keep_dir, min_size_gb, excludes, backup_exclude)?;
     Ok(())
 }

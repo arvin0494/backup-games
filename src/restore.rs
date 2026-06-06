@@ -1,4 +1,4 @@
-use crate::util::{self, e};
+use crate::util::{self, e, CopyOpts};
 use anyhow::Result;
 use std::fs;
 use std::io::Write;
@@ -36,9 +36,9 @@ fn pick_subdir(backup_item: &str) -> Result<Option<String>> {
 
 pub fn run_restore(backup_dest: &str, restore_exclude: &[String]) -> Result<()> {
     let backup_dest = util::expand_tilde(backup_dest);
-    let backup_path = Path::new(&backup_dest);
+    let backup_root = Path::new(&backup_dest);
 
-    if !backup_path.exists() {
+    if !backup_root.exists() {
         e(&format!("{}Backup destination not found: {}{}", util::RED, backup_dest, util::RESET));
         return Ok(());
     }
@@ -84,19 +84,18 @@ pub fn run_restore(backup_dest: &str, restore_exclude: &[String]) -> Result<()> 
     e(&format!("Restoring {} item(s) to {}...", selections.len(), restore_dest));
     for item in &selections {
         let item_path = Path::new(item);
-        let backup_root = Path::new(&backup_dest);
         let rel = item_path.strip_prefix(backup_root).unwrap_or(item_path);
-        let dest_item = format!("{}/{}", restore_dest, rel.display());
+        let dest = format!("{}/{}", restore_dest, rel.display());
 
         if let Some(sub) = pick_subdir(item)? {
             let sub_path = Path::new(&sub);
             let sub_rel = sub_path.strip_prefix(backup_root).unwrap_or(sub_path);
             let sub_dest = format!("{}/{}", restore_dest, sub_rel.display());
             e(&format!("  {} → {}", sub_rel.display(), sub_dest));
-            util::copy_progress(&sub, &sub_dest, 4, false, false, false, false, &restore_exclude)?;
+            util::copy_progress(&CopyOpts::new(&sub, &sub_dest).exclude(restore_exclude))?;
         } else {
-            e(&format!("  {} → {}", rel.display(), dest_item));
-            util::copy_progress(item, &dest_item, 4, false, false, false, false, &restore_exclude)?;
+            e(&format!("  {} → {}", rel.display(), dest));
+            util::copy_progress(&CopyOpts::new(item, &dest).exclude(restore_exclude))?;
         }
     }
 
