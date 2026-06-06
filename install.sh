@@ -5,43 +5,38 @@ PROJECT="backup-games"
 REPO_URL="https://github.com/arvin0494/backup-games.git"
 _TMPDIR=""
 
-R=$'\033[31m' G=$'\033[32m' Y=$'\033[33m' C=$'\033[36m' M=$'\033[35m'
-B=$'\033[1m' D=$'\033[2m' N=$'\033[0m'
+R=$'\033[31m' G=$'\033[32m' Y=$'\033[33m' C=$'\033[36m' B=$'\033[1m' D=$'\033[2m' N=$'\033[0m'
 
 header() {
-    printf "\n${M}╔══════════════════════════════════════════════════════════════╗${N}\n"
-    printf "${M}║${N}                     ${B}${C}backup-games${N}                        ${M}║${N}\n"
-    printf "${M}║${N}             ${D}Game Save Backup & Restore Tool${N}              ${M}║${N}\n"
-    printf "${M}╚══════════════════════════════════════════════════════════════╝${N}\n"
-    printf "${D}    ░▒▓█████████████████████████████████████████████████████▓▒░${N}\n\n"
+    printf "\n${C}   ╭──────────────────────────────────────────╮${N}\n"
+    printf "${C}   │${B}          backup-games installer${N}           ${C}│${N}\n"
+    printf "${C}   │${D}     Game Save Backup & Restore Tool${N}      ${C}│${N}\n"
+    printf "${C}   ╰──────────────────────────────────────────╯${N}\n\n"
 }
 
 section() {
     local n="$1" title="$2"
-    printf "\n${D}  ┌──────────────────────────────────────────────────────┐${N}\n"
-    printf "${C}  │ [0x%02x] %-45s${N}\n" "$n" "$title"
-    printf "${D}  └──────────────────────────────────────────────────────┘${N}\n"
+    printf "   ${D}──${N} ${B}${C}%s${N} ${D}${title}${N}\n" "$n" "$title"
 }
 
-info() { printf "${B}  ▸${N} %-24s ${C}%s${N}\n" "$1" "$2"; }
+step()    { printf "  ${C}◇${N} %s\n" "$*"; }
+ok()      { printf "  ${G}◆${N} %-28s ${G}%s${N}\n" "$1" "$2"; }
+warn()    { printf "  ${Y}◇${N} %s\n" "$*"; }
+info()    { printf "  ${D}◇${N} %-28s ${D}%s${N}\n" "$1" "$2"; }
+success() { printf "\n  ${B}${G}◆  %s${N}\n" "$*"; }
+fail()    { printf "\n  ${B}${R}◆  %s${N}\n" "$*"; }
 
-ok()   { printf "${B}  ▸${N} %-24s ${G}%s${N}\n" "$1" "$2"; }
-
-bar() {
-    local pct=$1
-    local w=30 filled
-    filled=$((pct * w / 100))
-    printf "  ${D}[${N}"
-    for ((i=0; i<w; i++)); do
-        [ $i -lt $filled ] && printf "${G}█${N}" || printf "${D}░${N}"
+spin() {
+    local pid=$1 msg="$2" s
+    s=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+    while kill -0 "$pid" 2>/dev/null; do
+        for c in "${s[@]}"; do
+            printf "\r  ${C}%s${N} %s" "$c" "$msg"
+            sleep 0.08
+        done
     done
-    printf "${D}]${N}  %3d%% %s\n" "$pct" "$2"
+    printf "\r  ${G}◆${N} %s\n" "$msg"
 }
-
-step()    { printf "  ${C}▶${N} %s\n" "$*"; }
-warn()    { printf "  ${Y}⚠ %s${N}\n" "$*"; }
-success() { printf "\n  ${G}${B}✔ %s${N}\n" "$*"; }
-fail()    { printf "\n  ${R}${B}✘ %s${N}\n" "$*"; }
 
 ensure_rust() {
     if command -v cargo &>/dev/null; then return 0; fi
@@ -59,14 +54,13 @@ build_and_install() {
     local src="$1"
     cd "$src"
 
-    step "Compiling (cargo build --release)..."
+    step "Compiling..."
     cargo build --release 2>&1 | while IFS= read -r line; do
-        [[ "$line" == "   Compiling "* ]] && bar 50 "${line#   }" && continue
-        [[ "$line" == "    Finished"* ]] && bar 100 "Linking..."
+        [[ "$line" == "   Compiling "* ]] && printf "\r  ${C}⠙${N} %s" "${line#   }"
+        [[ "$line" == "    Finished"* ]] && printf "\r  ${G}◆${N} Build complete\n"
     done
-    bar 100 "Build complete"
 
-    step "Installing binary..."
+    step "Installing..."
     mkdir -p "$HOME/.local/bin"
     cp "target/release/$PROJECT" "$HOME/.local/bin/"
     ok "Binary" "$HOME/.local/bin/$PROJECT"
@@ -113,13 +107,11 @@ cleanup() { [ -n "${_TMPDIR:-}" ] && rm -rf "$_TMPDIR"; }
 show_changelog() {
     local changelog="$1/CHANGELOG.md"
     if [ ! -f "$changelog" ]; then return; fi
-    printf "\n${D}  ┌──────────────────────────────────────────────────────┐${N}\n"
-    printf "${G}  │ WHAT'S NEW                                         ${N}\n"
-    printf "${D}  └──────────────────────────────────────────────────────┘${N}\n"
+    printf "\n   ${D}──${N} ${B}${C}What's new${N}\n"
     while IFS= read -r line; do
         case "$line" in
-            "## v"*) printf "  ${B}${G}%s${N}\n" "${line### }" ;;
-            "- "*)   printf "  ${C}▸${N} %s\n" "${line#- }" ;;
+            "## v"*) printf "  ${B}${C}%s${N}\n" "${line### }" ;;
+            "- "*)   printf "  ${D}%s${N}\n" "${line}" ;;
         esac
     done < "$changelog"
     echo
@@ -132,37 +124,30 @@ main() {
 
     header
 
-    printf "${D}  ╔══════════════════════════════════════════════════════╗${N}\n"
-    printf "${D}  ║${N}  ${B}REMOTE DEPLOYMENT SEQUENCE${N}            ${D}rev 1.0       ║${N}\n"
-    printf "${D}  ║${N}  PROTOCOL: ${Y}DOWNLOAD${N} ${D}→${N} ${C}VERIFY${N} ${D}→${N} ${M}INJECT${N} ${D}→${N} ${G}ARM${N}          ${D}║${N}\n"
-    printf "${D}  ╚══════════════════════════════════════════════════════╝${N}\n\n"
+    info "User" "$(whoami)"
+    info "Target" "$HOME/.local/bin/$PROJECT"
 
-    info "ROOT ACCESS" "CONFIRMED"
-    info "USER" "$(whoami)"
-    info "TARGET" "$HOME/.local/bin/$PROJECT"
-    info "SOURCE" "$REPO_URL"
-
-    section 1 "DOWNLOADING PAYLOADS FROM REMOTE"
-    bar 14 "Fetching $PROJECT..."
-
+    echo
+    section "1" "Fetching source"
     ensure_rust
     _TMPDIR="$(mktemp -d "/tmp/${PROJECT}-XXXXXX")"
     trap cleanup EXIT
-
     git clone --depth 1 "$REPO_URL" "$_TMPDIR/$PROJECT" 2>&1 | tail -1 || \
     git clone --depth 1 "${REPO_URL/https:\/\/github.com\//git@github.com:}" "$_TMPDIR/$PROJECT" 2>&1 | tail -1
-    bar 100 "Repository cloned"
+    ok "Repository" "cloned"
 
-    section 2 "BUILDING BINARY"
+    echo
+    section "2" "Building binary"
     build_and_install "$_TMPDIR/$PROJECT"
     show_changelog "$_TMPDIR/$PROJECT"
 
-    section 3 "CONFIGURING SYSTEM"
+    echo
+    section "3" "Setting up"
     shell_aliases
     create_config
 
-    printf "\n${D}  ────────────────────────────────────────────────────────${N}\n"
-    success "Deployment complete"
+    echo
+    success "Install complete!"
     step "Run ${B}${C}$PROJECT${N} or ${B}${C}bckup-games${N} ${D}--help${N}"
     echo
 }
