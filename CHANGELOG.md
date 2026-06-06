@@ -1,5 +1,9 @@
 # Changelog
 
+## v2.1.2 — 2025-06-06
+
+- **Restore without --update**: restore now overwrites local files completely, preventing game update prompts after restore
+
 ## v2.1.1 — 2025-06-05
 
 - **Remove automatic update prompt**: `--check-update` still works manually

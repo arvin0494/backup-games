@@ -61,7 +61,7 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
         }
 
         e(&format!("  {}{}{} → ...", util::BOLD, dir_name, util::RESET));
-        util::copy_progress(&src_expanded, &full_dst, checkers, false, false)?;
+        util::copy_progress(&src_expanded, &full_dst, checkers, false, false, true)?;
         manifest.insert(dir_name, mtime);
         util::save_manifest(&manifest_path, &manifest)?;
         e("Done: 1 backed up");
@@ -96,7 +96,7 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
 
     if subdirs.is_empty() && excluded_names.is_empty() {
         e("No subdirectories found, copying whole tree");
-        util::copy_progress(source, dest, checkers, false, false)?;
+        util::copy_progress(source, dest, checkers, false, false, true)?;
         return util::save_manifest(&manifest_path, &manifest);
     }
 
@@ -120,7 +120,7 @@ pub fn run_backup(source: &str, dest: &str, full: bool, force_folders: &[String]
         }
         let full_dst = format!("{}/{}", dest_expanded, name);
         e(&format!("  {}{}{} → ...", util::BOLD, name, util::RESET));
-        if let Err(err) = util::copy_progress(full_src, &full_dst, checkers, false, false) {
+        if let Err(err) = util::copy_progress(full_src, &full_dst, checkers, false, false, true) {
             if INTERRUPTED.load(Ordering::SeqCst) {
                 util::save_manifest(&manifest_path, &manifest)?;
                 e(&format!("{}Interrupted, saved progress{}", util::YELLOW, util::RESET));

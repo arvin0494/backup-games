@@ -59,7 +59,7 @@ pub fn run_restore(backup_dest: &str) -> Result<()> {
             .unwrap_or_default();
         let dest_item = format!("{}/{}", restore_dest, item_name);
         e(&format!("  {item_name} → {dest_item}"));
-        util::copy_progress(item, &dest_item, 4, false, false)?;
+        util::copy_progress(item, &dest_item, 4, false, false, false)?;
     }
 
     Ok(())
