@@ -26,16 +26,31 @@ info()    { printf "  ${D}◇${N} %-28s ${D}%s${N}\n" "$1" "$2"; }
 success() { printf "\n  ${B}${G}◆  %s${N}\n" "$*"; }
 fail()    { printf "\n  ${B}${R}◆  %s${N}\n" "$*"; }
 
-spin() {
-    local pid=$1 msg="$2" s
-    s=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+pacman_spin() {
+    local pid=$1 msg="$2"
+    local i=0
+    local f
+    f=('C··········' '·C·········' '··C········' '···C·······' '····C······'
+       '·····C·····' '······C····' '·······C···' '········C··' '·········C·')
     while kill -0 "$pid" 2>/dev/null; do
-        for c in "${s[@]}"; do
-            printf "\r  ${C}%s${N} %s" "$c" "$msg"
-            sleep 0.08
-        done
+        printf "\r  ${Y}%s${N} %s" "${f[i]}" "$msg"
+        i=$(( (i+1) % 10 ))
+        sleep 0.1
     done
     printf "\r  ${G}◆${N} %s\n" "$msg"
+}
+
+build_pacman() {
+    local pid=$1
+    local i=0
+    local f
+    f=('C··········' '·C·········' '··C········' '···C·······' '····C······'
+       '·····C·····' '······C····' '·······C···' '········C··' '·········C·')
+    while kill -0 "$pid" 2>/dev/null; do
+        printf "\r  ${Y}%s${N}   Compiling..." "${f[i]}"
+        i=$(( (i+1) % 10 ))
+        sleep 0.1
+    done
 }
 
 ensure_rust() {
@@ -55,10 +70,11 @@ build_and_install() {
     cd "$src"
 
     step "Compiling..."
-    cargo build --release 2>&1 | while IFS= read -r line; do
-        [[ "$line" == "   Compiling "* ]] && printf "\r  ${C}⠙${N} %s" "${line#   }"
-        [[ "$line" == "    Finished"* ]] && printf "\r  ${G}◆${N} Build complete\n"
-    done
+    cargo build --release &
+    local pid=$!
+    build_pacman "$pid"
+    wait "$pid" 2>/dev/null
+    printf "\r  ${G}◆${N} Build complete\n"
 
     step "Installing..."
     mkdir -p "$HOME/.local/bin"
@@ -132,8 +148,9 @@ main() {
     ensure_rust
     _TMPDIR="$(mktemp -d "/tmp/${PROJECT}-XXXXXX")"
     trap cleanup EXIT
-    git clone --depth 1 "$REPO_URL" "$_TMPDIR/$PROJECT" 2>&1 | tail -1 || \
-    git clone --depth 1 "${REPO_URL/https:\/\/github.com\//git@github.com:}" "$_TMPDIR/$PROJECT" 2>&1 | tail -1
+    (git clone --depth 1 "$REPO_URL" "$_TMPDIR/$PROJECT" 2>/dev/null || \
+     git clone --depth 1 "${REPO_URL/https:\/\/github.com\//git@github.com:}" "$_TMPDIR/$PROJECT" 2>/dev/null) &
+    pacman_spin $! "Cloning repository"
     ok "Repository" "cloned"
 
     echo
