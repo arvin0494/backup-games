@@ -12,26 +12,14 @@ fn pick_subdir(backup_item: &str) -> Result<Option<String>> {
     if lines.is_empty() {
         return Ok(None);
     }
-    if lines.len() == 1 {
-        let single = lines[0].trim();
-        e(&format!("  single subdirectory found: {}", Path::new(single).file_name().unwrap_or_default().to_string_lossy()));
-        return Ok(Some(single.to_string()));
-    }
-    let sel_file = "/tmp/backup-games-subdir-selection.txt";
-    let item_file = "/tmp/backup-games-subdir-items.txt";
-    fs::write(item_file, &subdirs)?;
-    e("  multiple subdirectories found, pick one:");
-    util::run_ok(&format!(
-        "fzf --prompt='Select subdirectory > ' < {} > {}",
-        item_file, sel_file
-    ))?;
-    let selected = fs::read_to_string(sel_file)?
-        .trim()
-        .to_string();
-    if selected.is_empty() {
+    // When there are multiple subdirectories, restore the whole directory
+    // instead of picking a single one (e.g. NTE has Client/ + NTEGlobal/).
+    if lines.len() > 1 {
         return Ok(None);
     }
-    Ok(Some(selected))
+    let single = lines[0].trim();
+    e(&format!("  single subdirectory found: {}", Path::new(single).file_name().unwrap_or_default().to_string_lossy()));
+    Ok(Some(single.to_string()))
 }
 
 pub fn run_restore(backup_dest: &str, restore_exclude: &[String]) -> Result<()> {
