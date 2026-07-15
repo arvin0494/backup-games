@@ -17,6 +17,14 @@ fn pick_subdir(backup_item: &str) -> Result<Option<String>> {
     if lines.len() > 1 {
         return Ok(None);
     }
+    // Check if the root contains files (not just subdirectories).
+    // If so, restore the entire directory so those files aren't dropped.
+    let root_files = util::run(&format!(
+        "find \"{}\" -mindepth 1 -maxdepth 1 -type f 2>/dev/null", backup_item
+    ))?;
+    if !root_files.trim().is_empty() {
+        return Ok(None);
+    }
     let single = lines[0].trim();
     e(&format!("  detected single subdirectory: {}", Path::new(single).file_name().unwrap_or_default().to_string_lossy()));
     Ok(Some(single.to_string()))
