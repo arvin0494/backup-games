@@ -22,7 +22,27 @@ fn pick_subdir(backup_item: &str) -> Result<Option<String>> {
     Ok(Some(single.to_string()))
 }
 
-pub fn run_restore(backup_dest: &str, restore_exclude: &[String]) -> Result<()> {
+fn restore_items(items: &[String], backup_root: &Path, restore_dest: &str, restore_exclude: &[String]) -> Result<()> {
+    for item in items {
+        let item_path = Path::new(item);
+        let rel = item_path.strip_prefix(backup_root).unwrap_or(item_path);
+        let dest = format!("{}/{}", restore_dest, rel.display());
+
+        if let Some(sub) = pick_subdir(item)? {
+            let sub_path = Path::new(&sub);
+            let sub_rel = sub_path.strip_prefix(backup_root).unwrap_or(sub_path);
+            let sub_dest = format!("{}/{}", restore_dest, sub_rel.display());
+            e(&format!("  {} → {}", sub_rel.display(), sub_dest));
+            util::copy_progress(&CopyOpts::new(&sub, &sub_dest).exclude(restore_exclude))?;
+        } else {
+            e(&format!("  {} → {}", rel.display(), dest));
+            util::copy_progress(&CopyOpts::new(item, &dest).exclude(restore_exclude))?;
+        }
+    }
+    Ok(())
+}
+
+pub fn run_restore(backup_dest: &str, restore_exclude: &[String], full: bool) -> Result<()> {
     let backup_dest = util::expand_tilde(backup_dest);
     let backup_root = Path::new(&backup_dest);
 
@@ -52,6 +72,12 @@ pub fn run_restore(backup_dest: &str, restore_exclude: &[String]) -> Result<()> 
 
     e(&format!("Found {} backup(s) in {}", lines.len(), backup_dest));
 
+    if full {
+        e(&format!("{}Full restore requested — restoring all items{}", util::GREEN, util::RESET));
+        let all_items: Vec<String> = lines.iter().map(|s| s.to_string()).collect();
+        return restore_items(&all_items, backup_root, &restore_dest, restore_exclude);
+    }
+
     let item_file = "/tmp/backup-games-items.txt";
     let sel_file = "/tmp/backup-games-selection.txt";
     fs::write(item_file, &items)?;
@@ -70,22 +96,8 @@ pub fn run_restore(backup_dest: &str, restore_exclude: &[String]) -> Result<()> 
     }
 
     e(&format!("Restoring {} item(s) to {}...", selections.len(), restore_dest));
-    for item in &selections {
-        let item_path = Path::new(item);
-        let rel = item_path.strip_prefix(backup_root).unwrap_or(item_path);
-        let dest = format!("{}/{}", restore_dest, rel.display());
-
-        if let Some(sub) = pick_subdir(item)? {
-            let sub_path = Path::new(&sub);
-            let sub_rel = sub_path.strip_prefix(backup_root).unwrap_or(sub_path);
-            let sub_dest = format!("{}/{}", restore_dest, sub_rel.display());
-            e(&format!("  {} → {}", sub_rel.display(), sub_dest));
-            util::copy_progress(&CopyOpts::new(&sub, &sub_dest).exclude(restore_exclude))?;
-        } else {
-            e(&format!("  {} → {}", rel.display(), dest));
-            util::copy_progress(&CopyOpts::new(item, &dest).exclude(restore_exclude))?;
-        }
-    }
+    let sel_owned: Vec<String> = selections.iter().map(|s| s.to_string()).collect();
+    restore_items(&sel_owned, backup_root, &restore_dest, restore_exclude)?;
 
     Ok(())
 }

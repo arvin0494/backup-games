@@ -1,10 +1,15 @@
 # Changelog
 
+## v2.2.0 — 2026-07-15
+
+- **Recursive mtime**: `dir_mtime` now walks the full directory tree to detect deep file changes (e.g. game updates that modify files inside subdirectories without touching the top-level mtime)
+- **`-r --full`**: restore all items without fzf selection
+- **Refactor**: `CopyOpts` builder replaces 8-param `copy_progress` signature; deduplicated exclude logic in backup
+
 ## v2.1.3 — 2026-06-06
 
 - **Subdirectory restore**: when restoring a dirsource, auto-detect single subdir or fzf-pick multiple, preserving relative paths
 - **backup_exclude config**: rclone `--exclude` patterns (e.g. `webCaches/`) skipped during backup and restore
-- **Refactor**: `CopyOpts` builder replaces 8-param `copy_progress` signature; deduplicated exclude logic in backup
 
 ## v2.1.2 — 2025-06-06
 

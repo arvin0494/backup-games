@@ -72,7 +72,7 @@ fn main() {
 
     let result = panic::catch_unwind(|| {
         if cli.restore {
-            restore::run_restore(&dest, &backup_exclude)
+            restore::run_restore(&dest, &backup_exclude, cli.full)
         } else {
             for source in &sources {
                 backup::run_backup(source, &dest, cli.full, &cli.force_folder, false, 0, &excludes, &backup_exclude)?;
