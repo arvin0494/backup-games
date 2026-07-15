@@ -170,7 +170,6 @@ pub fn copy_progress(opts: &CopyOpts) -> Result<()> {
     }
     if opts.force {
         args.push("--ignore-times".to_string());
-        e(&format!("{}(DEBUG) rclone args: {}{}", YELLOW, args.join(" "), RESET));
     }
     for pattern in opts.exclude {
         args.push("--exclude".to_string());

@@ -6,7 +6,7 @@ use std::path::Path;
 
 fn pick_subdir(backup_item: &str) -> Result<Option<String>> {
     let subdirs = util::run(&format!(
-        "find \"{}\" -mindepth 1 -maxdepth 1 -type d | sort", backup_item
+        "find \"{}\" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort", backup_item
     ))?;
     let lines: Vec<&str> = subdirs.lines().filter(|l| !l.is_empty()).collect();
     if lines.is_empty() {
@@ -18,7 +18,7 @@ fn pick_subdir(backup_item: &str) -> Result<Option<String>> {
         return Ok(None);
     }
     let single = lines[0].trim();
-    e(&format!("  single subdirectory found: {}", Path::new(single).file_name().unwrap_or_default().to_string_lossy()));
+    e(&format!("  detected single subdirectory: {}", Path::new(single).file_name().unwrap_or_default().to_string_lossy()));
     Ok(Some(single.to_string()))
 }
 
@@ -28,20 +28,33 @@ fn restore_items(items: &[String], backup_root: &Path, restore_dest: &str, resto
         let rel = item_path.strip_prefix(backup_root).unwrap_or(item_path);
         let dest = format!("{}/{}", restore_dest, rel.display());
 
-        if let Some(sub) = pick_subdir(item)? {
+        let (src_path, display_path, dest_path) = if let Some(sub) = pick_subdir(item)? {
             let sub_path = Path::new(&sub);
             let sub_rel = sub_path.strip_prefix(backup_root).unwrap_or(sub_path);
             let sub_dest = format!("{}/{}", restore_dest, sub_rel.display());
-            e(&format!("  {} → {}", sub_rel.display(), sub_dest));
-            let mut opts = CopyOpts::new(&sub, &sub_dest).exclude(restore_exclude);
-            if force { opts = opts.force(true); }
-            util::copy_progress(&opts)?;
+            e(&format!("  selecting subdirectory: {}", sub_rel.display()));
+            (sub.clone(), sub_rel.display().to_string(), sub_dest)
         } else {
-            e(&format!("  {} → {}", rel.display(), dest));
-            let mut opts = CopyOpts::new(item, &dest).exclude(restore_exclude);
-            if force { opts = opts.force(true); }
-            util::copy_progress(&opts)?;
-        }
+            (item.clone(), rel.display().to_string(), dest)
+        };
+
+        // Diagnose: check source exists and show file count
+        let src_check = if Path::new(&src_path).exists() {
+            let count = util::run(&format!(
+                "find \"{}\" -type f 2>/dev/null | wc -l", src_path
+            )).unwrap_or_else(|_| "?".to_string());
+            let size = util::run(&format!(
+                "du -sh \"{}\" 2>/dev/null | cut -f1", src_path
+            )).unwrap_or_else(|_| "?".to_string());
+            format!("{} files, {}", count.trim(), size.trim())
+        } else {
+            format!("{}DOES NOT EXIST{}", util::RED, util::RESET)
+        };
+        e(&format!("  {} {}→{}  ({})", display_path, util::BOLD, util::RESET, src_check));
+
+        let mut opts = CopyOpts::new(&src_path, &dest_path).exclude(restore_exclude);
+        if force { opts = opts.force(true); }
+        util::copy_progress(&opts)?;
     }
     Ok(())
 }
@@ -66,7 +79,7 @@ pub fn run_restore(backup_dest: &str, restore_exclude: &[String], full: bool, fo
         util::expand_tilde(input.trim())
     };
 
-    let items = util::run(&format!("find \"{}\" -mindepth 1 -maxdepth 1 -type d | sort", backup_dest))?;
+    let items = util::run(&format!("find \"{}\" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort", backup_dest))?;
     let lines: Vec<&str> = items.lines().filter(|l| !l.is_empty()).collect();
 
     if lines.is_empty() {
@@ -77,11 +90,11 @@ pub fn run_restore(backup_dest: &str, restore_exclude: &[String], full: bool, fo
     e(&format!("Found {} backup(s) in {}", lines.len(), backup_dest));
 
     if force {
-        e(&format!("{}Force mode enabled — ignoring file times, overwriting all files{}", util::YELLOW, util::RESET));
+        e(&format!("{}Force mode: --ignore-times will be passed to rclone{}", util::YELLOW, util::RESET));
     }
 
     if full {
-        e(&format!("{}Full restore requested — restoring all items{}", util::GREEN, util::RESET));
+        e(&format!("{}Full restore — restoring all items{}", util::GREEN, util::RESET));
         let all_items: Vec<String> = lines.iter().map(|s| s.to_string()).collect();
         return restore_items(&all_items, backup_root, &restore_dest, restore_exclude, force);
     }
