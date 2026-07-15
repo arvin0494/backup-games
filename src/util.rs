@@ -201,11 +201,32 @@ pub fn copy_progress(opts: &CopyOpts) -> Result<()> {
 }
 
 pub fn dir_mtime(path: &str) -> Option<u64> {
-    fs::metadata(path)
-        .ok()
-        .and_then(|m| m.modified().ok())
-        .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-        .map(|d| d.as_secs())
+    fn latest_mtime(dir: &std::path::Path) -> Option<u64> {
+        let meta = fs::metadata(dir).ok()?;
+        let mtime = meta.modified().ok()?
+            .duration_since(SystemTime::UNIX_EPOCH).ok()?
+            .as_secs();
+
+        if meta.is_dir() {
+            if let Ok(entries) = fs::read_dir(dir) {
+                let mut max = mtime;
+                for entry in entries.flatten() {
+                    if let Some(t) = latest_mtime(&entry.path()) {
+                        if t > max {
+                            max = t;
+                        }
+                    }
+                }
+                Some(max)
+            } else {
+                Some(mtime)
+            }
+        } else {
+            Some(mtime)
+        }
+    }
+
+    latest_mtime(std::path::Path::new(path))
 }
 
 pub fn load_manifest(path: &str) -> HashMap<String, u64> {
