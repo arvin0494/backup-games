@@ -77,11 +77,11 @@ fn main() {
         if cli.restore {
             restore::run_restore(&dest, &backup_exclude, cli.full, cli.force)
         } else {
-            for source in &sources {
-                backup::run_backup(source, &dest, cli.full, &cli.force_folder, false, 0, &excludes, &backup_exclude)?;
-            }
             for source in &dir_sources {
                 backup::run_backup(source, &dest, cli.full, &cli.force_folder, true, min_size_gb, &excludes, &backup_exclude)?;
+            }
+            for source in &sources {
+                backup::run_backup(source, &dest, cli.full, &cli.force_folder, false, 0, &excludes, &backup_exclude)?;
             }
             Ok(())
         }

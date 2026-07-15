@@ -44,9 +44,19 @@ fn run_source_backup(
         let full_dst = format!("{}/{}", dest_expanded, dir_name);
         let mtime = util::dir_mtime(&src_expanded).unwrap_or(0);
 
+        // Check if the backup destination actually has files.
+        // If the flat source pruned this directory, the manifest may still
+        // show it as unchanged even though the files are gone.
+        let dst_has_files = Path::new(&full_dst).exists() && {
+            util::run(&format!(
+                "find \"{}\" -type f 2>/dev/null | head -1", full_dst
+            )).map(|s| !s.trim().is_empty()).unwrap_or(false)
+        };
+
         if !full
             && !force_folders.contains(&dir_name)
             && manifest.get(&dir_name) == Some(&mtime)
+            && dst_has_files
         {
             e(&format!("  {}{}{} unchanged", util::CYAN, dir_name, util::RESET));
             return Ok(0);
