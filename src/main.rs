@@ -33,6 +33,9 @@ struct Cli {
     #[arg(short = 'f', long = "force-folder")]
     force_folder: Vec<String>,
 
+    #[arg(short = 'F', long = "force")]
+    force: bool,
+
     dest: Option<String>,
 }
 
@@ -72,7 +75,7 @@ fn main() {
 
     let result = panic::catch_unwind(|| {
         if cli.restore {
-            restore::run_restore(&dest, &backup_exclude, cli.full)
+            restore::run_restore(&dest, &backup_exclude, cli.full, cli.force)
         } else {
             for source in &sources {
                 backup::run_backup(source, &dest, cli.full, &cli.force_folder, false, 0, &excludes, &backup_exclude)?;

@@ -136,15 +136,17 @@ pub struct CopyOpts<'a> {
     pub ntfs: bool,
     pub skip_links: bool,
     pub update: bool,
+    pub force: bool,
     pub exclude: &'a [String],
 }
 
 impl<'a> CopyOpts<'a> {
     pub fn new(src: &'a str, dst: &'a str) -> Self {
-        Self { src, dst, checkers: 4, ntfs: false, skip_links: false, update: false, exclude: &[] }
+        Self { src, dst, checkers: 4, ntfs: false, skip_links: false, update: false, force: false, exclude: &[] }
     }
     pub fn checkers(mut self, n: u32) -> Self { self.checkers = n; self }
     pub fn update(mut self, v: bool) -> Self { self.update = v; self }
+    pub fn force(mut self, v: bool) -> Self { self.force = v; self }
     pub fn exclude(mut self, v: &'a [String]) -> Self { self.exclude = v; self }
 }
 
@@ -165,6 +167,9 @@ pub fn copy_progress(opts: &CopyOpts) -> Result<()> {
 
     if opts.update {
         args.push("--update".to_string());
+    }
+    if opts.force {
+        args.push("--ignore-times".to_string());
     }
     for pattern in opts.exclude {
         args.push("--exclude".to_string());

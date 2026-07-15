@@ -25,6 +25,9 @@ bckup-games                     # same via alias (added by install.sh)
 backup-games -s ~/OtherGames    # backup custom source
 backup-games /custom/dest       # backup to custom destination
 backup-games -r                 # restore with fzf multi-select
+backup-games -r --full          # restore all items, skip fzf
+backup-games -r --force         # restore and force-overwrite (ignore times, fix corruption)
+backup-games -r --full --force  # restore all, force-overwrite
 backup-games -y                 # skip confirmation (unused currently)
 backup-games --full             # force full backup, ignore change tracking
 backup-games --check-update     # check GitHub for newer version

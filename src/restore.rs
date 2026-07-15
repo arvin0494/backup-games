@@ -22,7 +22,7 @@ fn pick_subdir(backup_item: &str) -> Result<Option<String>> {
     Ok(Some(single.to_string()))
 }
 
-fn restore_items(items: &[String], backup_root: &Path, restore_dest: &str, restore_exclude: &[String]) -> Result<()> {
+fn restore_items(items: &[String], backup_root: &Path, restore_dest: &str, restore_exclude: &[String], force: bool) -> Result<()> {
     for item in items {
         let item_path = Path::new(item);
         let rel = item_path.strip_prefix(backup_root).unwrap_or(item_path);
@@ -33,16 +33,20 @@ fn restore_items(items: &[String], backup_root: &Path, restore_dest: &str, resto
             let sub_rel = sub_path.strip_prefix(backup_root).unwrap_or(sub_path);
             let sub_dest = format!("{}/{}", restore_dest, sub_rel.display());
             e(&format!("  {} → {}", sub_rel.display(), sub_dest));
-            util::copy_progress(&CopyOpts::new(&sub, &sub_dest).exclude(restore_exclude))?;
+            let mut opts = CopyOpts::new(&sub, &sub_dest).exclude(restore_exclude);
+            if force { opts = opts.force(true); }
+            util::copy_progress(&opts)?;
         } else {
             e(&format!("  {} → {}", rel.display(), dest));
-            util::copy_progress(&CopyOpts::new(item, &dest).exclude(restore_exclude))?;
+            let mut opts = CopyOpts::new(item, &dest).exclude(restore_exclude);
+            if force { opts = opts.force(true); }
+            util::copy_progress(&opts)?;
         }
     }
     Ok(())
 }
 
-pub fn run_restore(backup_dest: &str, restore_exclude: &[String], full: bool) -> Result<()> {
+pub fn run_restore(backup_dest: &str, restore_exclude: &[String], full: bool, force: bool) -> Result<()> {
     let backup_dest = util::expand_tilde(backup_dest);
     let backup_root = Path::new(&backup_dest);
 
@@ -72,10 +76,14 @@ pub fn run_restore(backup_dest: &str, restore_exclude: &[String], full: bool) ->
 
     e(&format!("Found {} backup(s) in {}", lines.len(), backup_dest));
 
+    if force {
+        e(&format!("{}Force mode enabled — ignoring file times, overwriting all files{}", util::YELLOW, util::RESET));
+    }
+
     if full {
         e(&format!("{}Full restore requested — restoring all items{}", util::GREEN, util::RESET));
         let all_items: Vec<String> = lines.iter().map(|s| s.to_string()).collect();
-        return restore_items(&all_items, backup_root, &restore_dest, restore_exclude);
+        return restore_items(&all_items, backup_root, &restore_dest, restore_exclude, force);
     }
 
     let item_file = "/tmp/backup-games-items.txt";
@@ -97,7 +105,7 @@ pub fn run_restore(backup_dest: &str, restore_exclude: &[String], full: bool) ->
 
     e(&format!("Restoring {} item(s) to {}...", selections.len(), restore_dest));
     let sel_owned: Vec<String> = selections.iter().map(|s| s.to_string()).collect();
-    restore_items(&sel_owned, backup_root, &restore_dest, restore_exclude)?;
+    restore_items(&sel_owned, backup_root, &restore_dest, restore_exclude, force)?;
 
     Ok(())
 }

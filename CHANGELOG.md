@@ -4,6 +4,7 @@
 
 - **Recursive mtime**: `dir_mtime` now walks the full directory tree to detect deep file changes (e.g. game updates that modify files inside subdirectories without touching the top-level mtime)
 - **`-r --full`**: restore all items without fzf selection
+- **`-r --force` / `-F`**: force-overwrite all files during restore (passes `--ignore-times` to rclone), useful for fixing corrupted game files that have matching size/mtime
 - **Refactor**: `CopyOpts` builder replaces 8-param `copy_progress` signature; deduplicated exclude logic in backup
 
 ## v2.1.3 — 2026-06-06
